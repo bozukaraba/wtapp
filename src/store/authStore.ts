@@ -19,6 +19,9 @@ import { User, AuthState } from '@/types';
 import { generateUniqueUsername, generateUsernameId, formatUsername } from '@/utils/usernames';
 
 interface AuthStore extends AuthState {
+  // User cache for chat display
+  userCache: Record<string, User>;
+  
   // Actions
   initializeAuth: () => void;
   signInWithGoogle: () => Promise<void>;
@@ -31,6 +34,7 @@ interface AuthStore extends AuthState {
   updateProfile: (data: Partial<User>) => Promise<void>;
   setUserOnline: (online: boolean) => Promise<void>;
   findUserByUsername: (username: string) => Promise<User | null>;
+  getUserById: (uid: string) => Promise<User | null>;
   createDirectChatByUsername: (username: string) => Promise<string>;
 }
 
@@ -40,6 +44,7 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       isLoading: true,
       isAuthenticated: false,
+      userCache: {},
 
       initializeAuth: () => {
         // Timeout ekle - 10 saniye sonra loading'i kapat
@@ -479,26 +484,108 @@ export const useAuthStore = create<AuthStore>()(
 
       findUserByUsername: async (username: string) => {
         try {
+          console.log('Firestore\'da aranan username:', username);
+          
           const q = query(
             collection(db, 'users'),
             where('username', '==', username)
           );
           
           const snapshot = await getDocs(q);
+          console.log('Firestore query sonucu:', snapshot.size, 'döküman bulundu');
           
           if (!snapshot.empty) {
-            const userData = snapshot.docs[0].data() as User;
-            return {
-              ...userData,
-              createdAt: userData.createdAt || new Date(),
-              updatedAt: userData.updatedAt || new Date(),
-              lastSeenAt: userData.lastSeenAt || new Date()
+            const docData = snapshot.docs[0].data();
+            console.log('Ham Firestore verisi:', docData);
+            
+            // Firestore Timestamp'larını Date'e çevir
+            const userData: User = {
+              uid: docData.uid,
+              displayName: docData.displayName,
+              username: docData.username,
+              usernameId: docData.usernameId,
+              email: docData.email,
+              photoURL: docData.photoURL,
+              phone: docData.phone,
+              about: docData.about || 'Mevcut',
+              lastSeenAt: docData.lastSeenAt?.toDate ? docData.lastSeenAt.toDate() : new Date(),
+              isOnline: docData.isOnline || false,
+              pushTokens: docData.pushTokens || [],
+              createdAt: docData.createdAt?.toDate ? docData.createdAt.toDate() : new Date(),
+              updatedAt: docData.updatedAt?.toDate ? docData.updatedAt.toDate() : new Date()
             };
+            
+            console.log('Parse edilmiş kullanıcı verisi:', userData);
+            
+            // Cache'e ekle
+            set((state) => ({
+              userCache: {
+                ...state.userCache,
+                [userData.uid]: userData
+              }
+            }));
+            
+            return userData;
           }
           
+          console.log('Username bulunamadı');
           return null;
         } catch (error) {
           console.error('Username ile kullanıcı arama hatası:', error);
+          return null;
+        }
+      },
+
+      getUserById: async (uid: string) => {
+        try {
+          // Önce cache'den kontrol et
+          const { userCache } = get();
+          if (userCache[uid]) {
+            console.log('Kullanıcı cache\'den alındı:', uid);
+            return userCache[uid];
+          }
+
+          console.log('Kullanıcı Firestore\'dan yükleniyor:', uid);
+          
+          const userDoc = await getDoc(doc(db, 'users', uid));
+          
+          if (userDoc.exists()) {
+            const docData = userDoc.data();
+            console.log('Ham kullanıcı verisi:', docData);
+            
+            // Firestore Timestamp'larını Date'e çevir
+            const userData: User = {
+              uid: docData.uid,
+              displayName: docData.displayName,
+              username: docData.username,
+              usernameId: docData.usernameId,
+              email: docData.email,
+              photoURL: docData.photoURL,
+              phone: docData.phone,
+              about: docData.about || 'Mevcut',
+              lastSeenAt: docData.lastSeenAt?.toDate ? docData.lastSeenAt.toDate() : new Date(),
+              isOnline: docData.isOnline || false,
+              pushTokens: docData.pushTokens || [],
+              createdAt: docData.createdAt?.toDate ? docData.createdAt.toDate() : new Date(),
+              updatedAt: docData.updatedAt?.toDate ? docData.updatedAt.toDate() : new Date()
+            };
+            
+            // Cache'e ekle
+            set((state) => ({
+              userCache: {
+                ...state.userCache,
+                [userData.uid]: userData
+              }
+            }));
+            
+            console.log('Kullanıcı yüklendi ve cache\'lendi:', userData);
+            return userData;
+          }
+          
+          console.log('Kullanıcı bulunamadı:', uid);
+          return null;
+        } catch (error) {
+          console.error('Kullanıcı ID ile arama hatası:', error);
           return null;
         }
       },

@@ -27,8 +27,20 @@ export const ChatList: React.FC = () => {
     
     // Direct chat için karşı tarafın adını bul
     const otherUserId = chat.members.find(id => id !== user?.uid);
-    // TODO: Kullanıcı bilgilerini store'dan al
-    return `Kullanıcı ${otherUserId?.slice(-4)}`;
+    if (!otherUserId) return 'Bilinmeyen Kullanıcı';
+    
+    // Cache'den kullanıcı bilgisini al
+    const { userCache, getUserById } = useAuthStore.getState();
+    const otherUser = userCache[otherUserId];
+    
+    if (otherUser) {
+      return otherUser.displayName;
+    }
+    
+    // Cache'de yoksa yükle (async olarak)
+    getUserById(otherUserId).catch(console.error);
+    
+    return `Kullanıcı ${otherUserId.slice(-4)}`;
   };
 
   const getChatAvatar = (chat: Chat) => {

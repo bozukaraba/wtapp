@@ -9,6 +9,7 @@ import {
   addDoc, 
   updateDoc, 
   doc, 
+  getDoc,
   serverTimestamp,
   getDocs,
   startAfter,
@@ -27,6 +28,7 @@ interface ChatStore extends ChatState {
   markMessageAsRead: (chatId: string, messageId: string, userId: string) => Promise<void>;
   setTyping: (chatId: string, userId: string, isTyping: boolean) => Promise<void>;
   setActiveChat: (chat: Chat | null) => void;
+  loadChatById: (chatId: string) => Promise<Chat | null>;
   loadMoreMessages: (chatId: string) => Promise<void>;
   createDirectChat: (otherUserId: string, currentUserId: string) => Promise<string>;
   createGroupChat: (name: string, members: string[], createdBy: string) => Promise<string>;
@@ -202,6 +204,45 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
 
   setActiveChat: (chat: Chat | null) => {
     set({ activeChat: chat });
+  },
+
+  loadChatById: async (chatId: string) => {
+    try {
+      console.log('Chat yükleniyor:', chatId);
+      
+      const chatDoc = await getDoc(doc(db, 'chats', chatId));
+      
+      if (chatDoc.exists()) {
+        const chatData = chatDoc.data();
+        console.log('Ham chat verisi:', chatData);
+        
+        const chat: Chat = {
+          id: chatDoc.id,
+          type: chatData.type,
+          members: chatData.members,
+          createdAt: chatData.createdAt?.toDate ? chatData.createdAt.toDate() : new Date(),
+          createdBy: chatData.createdBy,
+          name: chatData.name,
+          description: chatData.description,
+          photoURL: chatData.photoURL,
+          admins: chatData.admins,
+          lastMessage: chatData.lastMessage ? {
+            ...chatData.lastMessage,
+            createdAt: chatData.lastMessage.createdAt?.toDate ? chatData.lastMessage.createdAt.toDate() : new Date()
+          } : undefined
+        };
+        
+        console.log('Parse edilmiş chat:', chat);
+        set({ activeChat: chat });
+        return chat;
+      }
+      
+      console.log('Chat bulunamadı');
+      return null;
+    } catch (error) {
+      console.error('Chat yükleme hatası:', error);
+      return null;
+    }
   },
 
   loadMoreMessages: async (chatId: string) => {

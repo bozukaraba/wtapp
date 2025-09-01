@@ -22,6 +22,7 @@ export const ChatPage: React.FC = () => {
     subscribeToMessages, 
     subscribeToTyping,
     setActiveChat,
+    loadChatById,
     loadMoreMessages 
   } = useChatStore();
   
@@ -30,20 +31,33 @@ export const ChatPage: React.FC = () => {
   useEffect(() => {
     if (!chatId) return;
 
-    // Chat bilgilerini bul ve aktif yap
-    // TODO: Chat bilgisini store'dan al
-    setActiveChat(null);
+    const initializeChat = async () => {
+      try {
+        // Chat bilgilerini yükle
+        const chat = await loadChatById(chatId);
+        if (!chat) {
+          console.error('Chat bulunamadı:', chatId);
+          navigate('/chats');
+          return;
+        }
 
-    // Mesajları dinle
-    const unsubscribeMessages = subscribeToMessages(chatId);
-    const unsubscribeTyping = subscribeToTyping(chatId);
+        // Mesajları dinle
+        const unsubscribeMessages = subscribeToMessages(chatId);
+        const unsubscribeTyping = subscribeToTyping(chatId);
 
-    return () => {
-      unsubscribeMessages();
-      unsubscribeTyping();
-      setActiveChat(null);
+        return () => {
+          unsubscribeMessages();
+          unsubscribeTyping();
+          setActiveChat(null);
+        };
+      } catch (error) {
+        console.error('Chat başlatma hatası:', error);
+        navigate('/chats');
+      }
     };
-  }, [chatId, subscribeToMessages, subscribeToTyping, setActiveChat]);
+
+    initializeChat();
+  }, [chatId, loadChatById, subscribeToMessages, subscribeToTyping, setActiveChat, navigate]);
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -59,7 +73,25 @@ export const ChatPage: React.FC = () => {
     
     // Direct chat için karşı tarafın adını bul
     const otherUserId = activeChat.members.find(id => id !== user?.uid);
-    return `Kullanıcı ${otherUserId?.slice(-4)}`;
+    if (!otherUserId) return 'Bilinmeyen Kullanıcı';
+    
+    // Cache'den kullanıcı bilgisini al
+    const { userCache, getUserById } = useAuthStore.getState();
+    const otherUser = userCache[otherUserId];
+    
+    if (otherUser) {
+      return otherUser.displayName;
+    }
+    
+    // Cache'de yoksa yükle
+    getUserById(otherUserId).then(loadedUser => {
+      if (loadedUser) {
+        // Re-render için state güncelle (bu biraz hack ama çalışır)
+        setActiveChat({ ...activeChat });
+      }
+    });
+    
+    return `Kullanıcı ${otherUserId.slice(-4)}`;
   };
 
   const getChatAvatar = () => {
