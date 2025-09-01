@@ -34,8 +34,15 @@ export const ChatPage: React.FC = () => {
 
     const initializeChat = async () => {
       try {
+        console.log('=== CHAT BAŞLATILIYOR ===');
+        console.log('ChatID:', chatId);
+        console.log('User:', user);
+        
         // Chat bilgilerini yükle
+        console.log('Chat bilgileri yükleniyor...');
         const chat = await loadChatById(chatId);
+        console.log('Yüklenen chat:', chat);
+        
         if (!chat) {
           console.error('Chat bulunamadı:', chatId);
           navigate('/chats');
@@ -43,21 +50,28 @@ export const ChatPage: React.FC = () => {
         }
 
         // Mesajları dinle
+        console.log('Mesajları dinlemeye başlıyor...');
         const unsubscribeMessages = subscribeToMessages(chatId);
+        console.log('Typing dinlemeye başlıyor...');
         const unsubscribeTyping = subscribeToTyping(chatId);
 
         // Chat'i okundu olarak işaretle
         if (user) {
+          console.log('Chat okundu olarak işaretleniyor...');
           markChatAsRead(chatId, user.uid);
         }
 
+        console.log('=== CHAT BAŞLATMA TAMAMLANDI ===');
+
         return () => {
+          console.log('Chat temizleniyor...');
           unsubscribeMessages();
           unsubscribeTyping();
           setActiveChat(null);
         };
       } catch (error) {
-        console.error('Chat başlatma hatası:', error);
+        console.error('=== CHAT BAŞLATMA HATASI ===');
+        console.error('Hata:', error);
         navigate('/chats');
       }
     };
