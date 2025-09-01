@@ -14,6 +14,9 @@ import { SettingsPage } from '@/features/auth/pages/SettingsPage';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 
+// Utils
+import { notificationManager } from '@/utils/notifications';
+
 // Components
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -43,6 +46,17 @@ function App() {
     
     // Bildirimleri başlat
     initializeNotifications();
+    
+    // Browser bildirim izni iste
+    const requestNotificationPermission = async () => {
+      try {
+        await notificationManager.requestPermission();
+      } catch (error) {
+        console.error('Browser bildirim izni hatası:', error);
+      }
+    };
+    
+    requestNotificationPermission();
     
     // Tema sınıfını uygula
     if (theme.mode === 'dark') {

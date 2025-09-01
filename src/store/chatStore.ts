@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Chat, Message, ChatState, TypingStatus } from '@/types';
+import { notificationManager } from '@/utils/notifications';
 
 interface ChatStore extends ChatState {
   // Actions
@@ -44,32 +45,60 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   lastVisible: null,
 
   subscribeToChats: (userId: string) => {
+    console.log('Chat listesini dinlemeye başlıyor:', userId);
+    
     const q = query(
       collection(db, 'chats'),
-      where('members', 'array-contains', userId),
-      orderBy('lastMessage.createdAt', 'desc')
+      where('members', 'array-contains', userId)
     );
 
     return onSnapshot(q, (snapshot) => {
+      console.log('Chat snapshot alındı:', snapshot.size, 'chat');
+      
       const chats: Chat[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
-        chats.push({
+        console.log('Ham chat verisi:', data);
+        
+        const chat: Chat = {
           id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
+          type: data.type,
+          members: data.members,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+          createdBy: data.createdBy,
+          name: data.name,
+          description: data.description,
+          photoURL: data.photoURL,
+          admins: data.admins,
           lastMessage: data.lastMessage ? {
-            ...data.lastMessage,
-            createdAt: data.lastMessage.createdAt?.toDate() || new Date()
+            id: data.lastMessage.id,
+            text: data.lastMessage.text,
+            from: data.lastMessage.from,
+            createdAt: data.lastMessage.createdAt?.toDate ? data.lastMessage.createdAt.toDate() : new Date(),
+            type: data.lastMessage.type
           } : undefined
-        } as Chat);
+        };
+        
+        chats.push(chat);
       });
       
+      // Son mesaja göre sırala
+      chats.sort((a, b) => {
+        const aTime = a.lastMessage?.createdAt || a.createdAt;
+        const bTime = b.lastMessage?.createdAt || b.createdAt;
+        return bTime.getTime() - aTime.getTime();
+      });
+      
+      console.log('Parse edilmiş chat listesi:', chats);
       set({ chats });
+    }, (error) => {
+      console.error('Chat dinleme hatası:', error);
     });
   },
 
   subscribeToMessages: (chatId: string) => {
+    console.log('Mesajları dinlemeye başlıyor:', chatId);
+    
     const q = query(
       collection(db, 'messages', chatId, 'items'),
       orderBy('createdAt', 'desc'),
@@ -77,35 +106,94 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     );
 
     return onSnapshot(q, (snapshot) => {
+      console.log('Mesaj snapshot alındı:', snapshot.size, 'mesaj');
+      
       const messages: Message[] = [];
       let lastVisible: QueryDocumentSnapshot<DocumentData> | null = null;
       
       snapshot.forEach((doc) => {
         const data = doc.data();
-        messages.push({
+        console.log('Ham mesaj verisi:', data);
+        
+        const message: Message = {
           id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate(),
+          chatId: data.chatId || chatId,
+          from: data.from,
+          type: data.type,
+          text: data.text,
+          mediaURL: data.mediaURL,
+          mediaType: data.mediaType,
+          fileName: data.fileName,
+          fileSize: data.fileSize,
+          replyTo: data.replyTo,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
+          deliveredTo: data.deliveredTo || [],
           readBy: data.readBy?.map((read: any) => ({
-            ...read,
-            readAt: read.readAt?.toDate() || new Date()
-          })) || []
-        } as Message);
+            userId: read.userId,
+            readAt: read.readAt?.toDate ? read.readAt.toDate() : new Date()
+          })) || [],
+          duration: data.duration
+        };
+        
+        messages.push(message);
         
         if (snapshot.docs.length > 0) {
           lastVisible = snapshot.docs[snapshot.docs.length - 1];
         }
       });
 
+      const sortedMessages = messages.reverse();
+      console.log('Parse edilmiş mesajlar:', sortedMessages);
+
+      // Yeni mesaj bildirimi kontrolü
+      const currentMessages = get().messages[chatId] || [];
+      const newMessages = sortedMessages.filter(msg => 
+        !currentMessages.some(existing => existing.id === msg.id)
+      );
+
+      // Yeni mesajlar için bildirim göster
+      newMessages.forEach(async (message) => {
+        // Kendi mesajı değilse ve sayfa aktif değilse bildirim göster
+        const currentUserId = JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.user?.uid;
+        
+        if (message.from !== currentUserId && document.visibilityState !== 'visible') {
+          try {
+            // Gönderen kullanıcının bilgilerini al
+            const { getUserById } = await import('@/store/authStore');
+            const { useAuthStore } = await import('@/store/authStore');
+            const sender = await useAuthStore.getState().getUserById(message.from);
+            
+            const senderName = sender?.displayName || 'Bilinmeyen Kullanıcı';
+            const messageText = message.type === 'text' ? 
+              (message.text || 'Mesaj') : 
+              `📎 ${message.type === 'image' ? 'Fotoğraf' : 'Dosya'}`;
+
+            await notificationManager.showMessageNotification(
+              senderName,
+              messageText,
+              chatId,
+              sender?.photoURL
+            );
+
+            // Ses çal
+            notificationManager.playNotificationSound();
+          } catch (error) {
+            console.error('Bildirim gösterme hatası:', error);
+          }
+        }
+      });
+
       set((state) => ({
         messages: {
           ...state.messages,
-          [chatId]: messages.reverse()
+          [chatId]: sortedMessages
         },
         lastVisible,
         hasMore: messages.length === 50
       }));
+    }, (error) => {
+      console.error('Mesaj dinleme hatası:', error);
     });
   },
 
