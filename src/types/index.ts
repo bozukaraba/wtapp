@@ -3,6 +3,7 @@ export interface User {
   displayName: string;
   username?: string; // Benzersiz kullanıcı adı (örn: "NeşeliMaviAslan123#A1B2C3")
   usernameId?: string; // 6 haneli ID kısmı
+  email?: string; // Email adresi
   photoURL?: string;
   phone?: string;
   about?: string;

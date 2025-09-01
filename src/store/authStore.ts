@@ -112,14 +112,34 @@ export const useAuthStore = create<AuthStore>()(
                   updatedAt: new Date()
                 };
 
+                // Undefined değerleri temizle
+                const firestoreData: any = {
+                  uid: firebaseUser.uid,
+                  displayName: firebaseUser.displayName || (firebaseUser.isAnonymous ? 'Misafir Kullanıcı' : 'Kullanıcı'),
+                  username: uniqueUsername,
+                  usernameId: usernameId,
+                  about: firebaseUser.isAnonymous ? 'Misafir olarak katıldı' : 'Mevcut',
+                  lastSeenAt: serverTimestamp(),
+                  isOnline: true,
+                  pushTokens: [],
+                  createdAt: serverTimestamp(),
+                  updatedAt: serverTimestamp()
+                };
+
+                // Optional alanları sadece değer varsa ekle
+                if (firebaseUser.photoURL) {
+                  firestoreData.photoURL = firebaseUser.photoURL;
+                }
+                if (firebaseUser.email) {
+                  firestoreData.email = firebaseUser.email;
+                }
+                if (firebaseUser.phoneNumber) {
+                  firestoreData.phone = firebaseUser.phoneNumber;
+                }
+
                 // Tüm kullanıcılar için Firestore'a kaydet (username araması için gerekli)
                 try {
-                  await setDoc(doc(db, 'users', firebaseUser.uid), {
-                    ...newUser,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                    lastSeenAt: serverTimestamp()
-                  });
+                  await setDoc(doc(db, 'users', firebaseUser.uid), firestoreData);
                   console.log('New user saved to Firestore:', newUser);
                 } catch (error) {
                   console.error('Firestore yazma hatası:', error);
@@ -223,12 +243,29 @@ export const useAuthStore = create<AuthStore>()(
             updatedAt: new Date()
           };
 
-          await setDoc(doc(db, 'users', firebaseUser.uid), {
-            ...newUser,
+          // Undefined değerleri temizle
+          const firestoreData: any = {
+            uid: firebaseUser.uid,
+            displayName: displayName.trim(),
+            username: uniqueUsername,
+            usernameId: usernameId,
+            about: 'Mevcut',
+            lastSeenAt: serverTimestamp(),
+            isOnline: true,
+            pushTokens: [],
             createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            lastSeenAt: serverTimestamp()
-          });
+            updatedAt: serverTimestamp()
+          };
+
+          // Optional alanları sadece değer varsa ekle
+          if (firebaseUser.photoURL) {
+            firestoreData.photoURL = firebaseUser.photoURL;
+          }
+          if (firebaseUser.email) {
+            firestoreData.email = firebaseUser.email;
+          }
+
+          await setDoc(doc(db, 'users', firebaseUser.uid), firestoreData);
 
           console.log('Email ile kayıt tamamlandı:', newUser);
           set({ isLoading: false });
@@ -388,10 +425,20 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const updatedUser = { ...user, ...data, updatedAt: new Date() };
           
-          await updateDoc(doc(db, 'users', user.uid), {
-            ...data,
+          // Undefined değerleri temizle
+          const updateData: any = {
             updatedAt: serverTimestamp()
+          };
+
+          // Sadece tanımlı değerleri ekle
+          Object.keys(data).forEach(key => {
+            const value = (data as any)[key];
+            if (value !== undefined && value !== null) {
+              updateData[key] = value;
+            }
           });
+
+          await updateDoc(doc(db, 'users', user.uid), updateData);
 
           set({ user: updatedUser });
         } catch (error) {
