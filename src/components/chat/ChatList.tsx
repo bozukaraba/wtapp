@@ -10,7 +10,7 @@ import { Check, CheckCheck } from 'lucide-react';
 
 export const ChatList: React.FC = () => {
   const navigate = useNavigate();
-  const { chats, subscribeToChats } = useChatStore();
+  const { chats, subscribeToChats, calculateUnreadCount, markChatAsRead } = useChatStore();
   const { user } = useAuthStore();
 
   useEffect(() => {
@@ -133,7 +133,13 @@ export const ChatList: React.FC = () => {
       {chats.map((chat) => (
         <div
           key={chat.id}
-          onClick={() => navigate(`/chats/${chat.id}`)}
+          onClick={() => {
+            // Chat'i okundu olarak işaretle
+            if (user) {
+              markChatAsRead(chat.id, user.uid);
+            }
+            navigate(`/chats/${chat.id}`);
+          }}
           className="chat-item border-b border-gray-200 dark:border-gray-700 last:border-b-0"
         >
           {/* Avatar */}
@@ -165,12 +171,20 @@ export const ChatList: React.FC = () => {
                 </p>
               </div>
               
-              {/* Unread Count - TODO: Implement */}
-              {false && (
-                <div className="w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center ml-2">
-                  <span className="text-xs text-white font-medium">3</span>
-                </div>
-              )}
+              {/* Unread Count */}
+              {(() => {
+                if (!user) return null;
+                const unreadCount = calculateUnreadCount(chat.id, user.uid);
+                if (unreadCount === 0) return null;
+                
+                return (
+                  <div className="min-w-[20px] h-5 bg-red-500 rounded-full flex items-center justify-center ml-2 px-1">
+                    <span className="text-xs text-white font-medium">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

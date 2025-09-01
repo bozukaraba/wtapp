@@ -23,7 +23,8 @@ export const ChatPage: React.FC = () => {
     subscribeToTyping,
     setActiveChat,
     loadChatById,
-    loadMoreMessages 
+    loadMoreMessages,
+    markChatAsRead
   } = useChatStore();
   
   const { user } = useAuthStore();
@@ -44,6 +45,11 @@ export const ChatPage: React.FC = () => {
         // Mesajları dinle
         const unsubscribeMessages = subscribeToMessages(chatId);
         const unsubscribeTyping = subscribeToTyping(chatId);
+
+        // Chat'i okundu olarak işaretle
+        if (user) {
+          markChatAsRead(chatId, user.uid);
+        }
 
         return () => {
           unsubscribeMessages();

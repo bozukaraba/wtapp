@@ -100,6 +100,7 @@ export interface ChatState {
   activeChat: Chat | null;
   messages: Record<string, Message[]>;
   typingUsers: Record<string, string[]>;
+  unreadCounts: Record<string, number>; // chatId -> unread count
   isLoading: boolean;
   hasMore: boolean;
   lastVisible: any;

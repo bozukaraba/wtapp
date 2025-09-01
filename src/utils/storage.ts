@@ -26,27 +26,43 @@ export class StorageManager {
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
     try {
-      console.log('Dosya yükleniyor:', file.name, 'Path:', path);
+      console.log('=== DOSYA YÜKLEME BAŞLIYOR ===');
+      console.log('Dosya:', file.name);
+      console.log('Boyut:', file.size, 'bytes');
+      console.log('Tür:', file.type);
+      console.log('Path:', path);
       
       // Storage referansı oluştur
+      console.log('Storage referansı oluşturuluyor...');
       const storageRef = ref(storage, path);
+      console.log('Storage referansı oluşturuldu:', storageRef);
       
       // Dosyayı yükle
+      console.log('uploadBytes başlatılıyor...');
       const snapshot = await uploadBytes(storageRef, file);
-      console.log('Dosya yüklendi:', snapshot.metadata);
+      console.log('uploadBytes tamamlandı:', snapshot.metadata);
       
       // Download URL'ini al
+      console.log('getDownloadURL başlatılıyor...');
       const downloadURL = await getDownloadURL(storageRef);
       console.log('Download URL alındı:', downloadURL);
       
-      return {
+      const result = {
         url: downloadURL,
         path: path,
         size: file.size
       };
+      
+      console.log('=== DOSYA YÜKLEME TAMAMLANDI ===');
+      console.log('Sonuç:', result);
+      
+      return result;
     } catch (error) {
-      console.error('Dosya yükleme hatası:', error);
-      throw new Error('Dosya yüklenemedi');
+      console.error('=== DOSYA YÜKLEME HATASI ===');
+      console.error('Hata detayı:', error);
+      console.error('Hata kodu:', (error as any)?.code);
+      console.error('Hata mesajı:', (error as any)?.message);
+      throw new Error(`Dosya yüklenemedi: ${(error as any)?.message || error}`);
     }
   }
 

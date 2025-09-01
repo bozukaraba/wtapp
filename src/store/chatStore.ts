@@ -28,6 +28,8 @@ interface ChatStore extends ChatState {
   subscribeToTyping: (chatId: string) => () => void;
   sendMessage: (chatId: string, message: Omit<Message, 'id' | 'createdAt' | 'deliveredTo' | 'readBy'>) => Promise<void>;
   markMessageAsRead: (chatId: string, messageId: string, userId: string) => Promise<void>;
+  markChatAsRead: (chatId: string, userId: string) => Promise<void>;
+  calculateUnreadCount: (chatId: string, userId: string) => number;
   setTyping: (chatId: string, userId: string, isTyping: boolean) => Promise<void>;
   setActiveChat: (chat: Chat | null) => void;
   loadChatById: (chatId: string) => Promise<Chat | null>;
@@ -41,6 +43,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   activeChat: null,
   messages: {},
   typingUsers: {},
+  unreadCounts: {},
   isLoading: false,
   hasMore: true,
   lastVisible: null,
@@ -153,34 +156,46 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
         !currentMessages.some(existing => existing.id === msg.id)
       );
 
-      // Yeni mesajlar için bildirim göster
+      // Unread count güncelle ve bildirim göster
+      const currentUserId = JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.user?.uid;
+      
       newMessages.forEach(async (message) => {
-        // Kendi mesajı değilse ve sayfa aktif değilse bildirim göster
-        const currentUserId = JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.user?.uid;
-        
-        if (message.from !== currentUserId && document.visibilityState !== 'visible') {
-          try {
-            // Gönderen kullanıcının bilgilerini al
-            const { getUserById } = await import('@/store/authStore');
-            const { useAuthStore } = await import('@/store/authStore');
-            const sender = await useAuthStore.getState().getUserById(message.from);
-            
-            const senderName = sender?.displayName || 'Bilinmeyen Kullanıcı';
-            const messageText = message.type === 'text' ? 
-              (message.text || 'Mesaj') : 
-              `📎 ${message.type === 'image' ? 'Fotoğraf' : 'Dosya'}`;
+        // Kendi mesajı değilse unread count artır
+        if (message.from !== currentUserId) {
+          set((state) => ({
+            unreadCounts: {
+              ...state.unreadCounts,
+              [chatId]: (state.unreadCounts[chatId] || 0) + 1
+            }
+          }));
 
-            await notificationManager.showMessageNotification(
-              senderName,
-              messageText,
-              chatId,
-              sender?.photoURL
-            );
+          // Sayfa aktif değilse bildirim göster
+          if (document.visibilityState !== 'visible') {
+            try {
+              // Gönderen kullanıcının bilgilerini al
+              const { getUserById } = await import('@/store/authStore');
+              const { useAuthStore } = await import('@/store/authStore');
+              const sender = await useAuthStore.getState().getUserById(message.from);
+              
+              const senderName = sender?.displayName || 'Bilinmeyen Kullanıcı';
+              const messageText = message.type === 'text' ? 
+                (message.text || 'Mesaj') : 
+                `📎 ${message.type === 'image' ? 'Fotoğraf' : 
+                       message.type === 'audio' ? 'Ses kaydı' :
+                       message.type === 'file' ? 'Dosya' : 'Medya'}`;
 
-            // Ses çal
-            notificationManager.playNotificationSound();
-          } catch (error) {
-            console.error('Bildirim gösterme hatası:', error);
+              await notificationManager.showMessageNotification(
+                senderName,
+                messageText,
+                chatId,
+                sender?.photoURL
+              );
+
+              // Ses çal
+              notificationManager.playNotificationSound();
+            } catch (error) {
+              console.error('Bildirim gösterme hatası:', error);
+            }
           }
         }
       });
@@ -479,6 +494,35 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     } catch (error) {
       console.error('Grup chat oluşturma hatası:', error);
       throw error;
+    }
+  },
+
+  calculateUnreadCount: (chatId: string, userId: string) => {
+    const state = get();
+    return state.unreadCounts[chatId] || 0;
+  },
+
+  markChatAsRead: async (chatId: string, userId: string) => {
+    try {
+      // Unread count'u sıfırla
+      set((state) => ({
+        unreadCounts: {
+          ...state.unreadCounts,
+          [chatId]: 0
+        }
+      }));
+
+      // Tüm okunmamış mesajları okundu olarak işaretle
+      const messages = get().messages[chatId] || [];
+      const unreadMessages = messages.filter(msg => 
+        msg.from !== userId && !msg.readBy?.some(read => read.userId === userId)
+      );
+
+      for (const message of unreadMessages) {
+        await get().markMessageAsRead(chatId, message.id, userId);
+      }
+    } catch (error) {
+      console.error('Chat okundu işaretleme hatası:', error);
     }
   }
 }));
