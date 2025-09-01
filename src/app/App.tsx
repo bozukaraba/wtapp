@@ -13,6 +13,7 @@ import { SettingsPage } from '@/features/auth/pages/SettingsPage';
 // Stores
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
+import { useVideoCallStore } from '@/store/videoCallStore';
 
 // Utils
 import { notificationManager } from '@/utils/notifications';
@@ -21,6 +22,7 @@ import { notificationManager } from '@/utils/notifications';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { VideoCall } from '@/components/video/VideoCall';
 
 // Styles
 import '@/styles/globals.css';
@@ -37,8 +39,18 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  const { isLoading, isAuthenticated, initializeAuth } = useAuthStore();
+  const { isLoading, isAuthenticated, initializeAuth, user } = useAuthStore();
   const { initializeNotifications, theme } = useUIStore();
+  const { 
+    currentCall, 
+    isInCall, 
+    isMinimized, 
+    acceptCall, 
+    declineCall, 
+    endCall, 
+    toggleMinimize,
+    subscribeToIncomingCalls 
+  } = useVideoCallStore();
 
   useEffect(() => {
     // Auth durumunu başlat
@@ -65,6 +77,14 @@ function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [initializeAuth, initializeNotifications, theme.mode]);
+
+  // Subscribe to incoming calls when user is authenticated
+  useEffect(() => {
+    if (user && isAuthenticated) {
+      const unsubscribe = subscribeToIncomingCalls(user.uid);
+      return unsubscribe;
+    }
+  }, [user, isAuthenticated, subscribeToIncomingCalls]);
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -121,6 +141,19 @@ function App() {
                 },
               }}
             />
+
+            {/* Video Call Component */}
+            {currentCall && isInCall && (
+              <VideoCall
+                isIncoming={currentCall.status === 'pending' && currentCall.to === user?.uid}
+                callerName={`Kullanıcı ${currentCall.from.slice(-4)}`}
+                onAccept={() => acceptCall(currentCall.id)}
+                onDecline={() => declineCall(currentCall.id)}
+                onEnd={endCall}
+                isMinimized={isMinimized}
+                onToggleMinimize={toggleMinimize}
+              />
+            )}
           </div>
         </Router>
       </QueryClientProvider>

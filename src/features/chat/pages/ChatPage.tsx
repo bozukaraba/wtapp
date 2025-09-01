@@ -6,6 +6,7 @@ import { MessageBubble } from '@/components/chat/MessageBubble';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { useChatStore } from '@/store/chatStore';
 import { useAuthStore } from '@/store/authStore';
+import { useVideoCallStore } from '@/store/videoCallStore';
 import { ArrowLeft, Phone, Video, MoreVertical, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -28,6 +29,7 @@ export const ChatPage: React.FC = () => {
   } = useChatStore();
   
   const { user } = useAuthStore();
+  const { initiateCall } = useVideoCallStore();
 
   useEffect(() => {
     if (!chatId) return;
@@ -170,6 +172,28 @@ export const ChatPage: React.FC = () => {
     return typingUsers[chatId] || [];
   };
 
+  // Handle video/audio call
+  const handleCall = async (type: 'video' | 'audio') => {
+    if (!activeChat || !user) {
+      console.error('Chat veya kullanıcı bulunamadı');
+      return;
+    }
+
+    try {
+      // Direct chat için karşı tarafın ID'sini bul
+      const otherUserId = activeChat.members.find(id => id !== user.uid);
+      if (!otherUserId) {
+        console.error('Karşı taraf bulunamadı');
+        return;
+      }
+
+      console.log(`${type} araması başlatılıyor:`, otherUserId);
+      await initiateCall(otherUserId, type);
+    } catch (error) {
+      console.error('Arama başlatma hatası:', error);
+    }
+  };
+
   const renderTypingIndicator = () => {
     const typing = getTypingUsers().filter(userId => userId !== user?.uid);
     if (typing.length === 0) return null;
@@ -244,6 +268,7 @@ export const ChatPage: React.FC = () => {
             variant="ghost"
             size="sm"
             title="Sesli arama"
+            onClick={() => handleCall('audio')}
           >
             <Phone className="w-5 h-5" />
           </Button>
@@ -252,6 +277,7 @@ export const ChatPage: React.FC = () => {
             variant="ghost"
             size="sm"
             title="Görüntülü arama"
+            onClick={() => handleCall('video')}
           >
             <Video className="w-5 h-5" />
           </Button>
