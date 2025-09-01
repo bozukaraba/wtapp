@@ -32,6 +32,12 @@ export const ChatListPage: React.FC = () => {
     navigate('/discover');
   };
 
+  const handleTestChat = () => {
+    // Test için basit bir chat ID oluştur
+    const testChatId = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    navigate(`/chats/${testChatId}`);
+  };
+
   const handleNewGroup = () => {
     // TODO: Yeni grup modal'ı aç
     console.log('Yeni grup');
@@ -73,6 +79,15 @@ export const ChatListPage: React.FC = () => {
           >
             <UserPlus className="w-5 h-5 mr-3" />
             Sohbet Başlat
+          </Button>
+          
+          <Button
+            variant="ghost"
+            className="w-full justify-start"
+            onClick={handleTestChat}
+          >
+            <MessageCircle className="w-5 h-5 mr-3" />
+            Test Konuşması
           </Button>
           
           <Button
@@ -154,6 +169,15 @@ export const ChatListPage: React.FC = () => {
                   title="Sohbet Başlat"
                 >
                   <UserPlus className="w-5 h-5" />
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleTestChat}
+                  title="Test Konuşması"
+                >
+                  <MessageCircle className="w-5 h-5" />
                 </Button>
                 
                 <Button

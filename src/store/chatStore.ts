@@ -253,6 +253,36 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       console.log('ChatID:', chatId);
       console.log('Mesaj verisi:', messageData);
       
+      // Chat'in var olup olmadığını kontrol et, yoksa oluştur
+      const chatDoc = await getDoc(doc(db, 'chats', chatId));
+      if (!chatDoc.exists()) {
+        console.log('Chat bulunamadı, yeni chat oluşturuluyor...');
+        
+        // Test için basit bir direct chat oluştur
+        const newChatData = {
+          type: 'direct',
+          members: [messageData.from], // Test için sadece gönderen
+          createdAt: serverTimestamp(),
+          createdBy: messageData.from,
+          name: `Test Chat ${chatId.slice(-6)}`, // Test için isim
+          description: 'Test konuşması'
+        };
+        
+        await setDoc(doc(db, 'chats', chatId), newChatData);
+        console.log('Yeni test chat oluşturuldu:', chatId);
+        
+        // Aktif chat'i güncelle
+        set({ activeChat: {
+          id: chatId,
+          type: 'direct',
+          members: [messageData.from],
+          createdAt: new Date(),
+          createdBy: messageData.from,
+          name: `Test Chat ${chatId.slice(-6)}`,
+          description: 'Test konuşması'
+        }});
+      }
+      
       // Undefined değerleri temizle
       const cleanMessageData: any = {
         chatId: messageData.chatId,

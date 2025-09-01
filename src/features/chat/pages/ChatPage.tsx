@@ -45,8 +45,16 @@ export const ChatPage: React.FC = () => {
         
         if (!chat) {
           console.error('Chat bulunamadı:', chatId);
-          navigate('/chats');
-          return;
+          // Chat bulunamadıysa, geçerli bir chat ID'si olup olmadığını kontrol et
+          // Eğer chatId geçerli bir format değilse ana sayfaya yönlendir
+          if (!chatId || chatId.length < 10) {
+            navigate('/chats');
+            return;
+          }
+          
+          // Chat ID geçerli görünüyor ama chat bulunamadı
+          // Bu durumda kullanıcıyı bilgilendir ama sayfada kal
+          console.warn('Chat ID geçerli ama chat bulunamadı, boş chat olarak devam ediliyor');
         }
 
         // Mesajları dinle
@@ -99,7 +107,10 @@ export const ChatPage: React.FC = () => {
   }, [chatId, messages, activeChat, user]);
 
   const getChatName = () => {
-    if (!activeChat) return 'Yükleniyor...';
+    if (!activeChat) {
+      // Chat yüklenmemişse, chatId'den bir isim türet
+      return chatId ? `Chat ${chatId.slice(-6)}` : 'Yeni Konuşma';
+    }
     
     if (activeChat.type === 'group') {
       return activeChat.name || 'Grup';
@@ -324,7 +335,7 @@ export const ChatPage: React.FC = () => {
       </div>
 
       {/* Message Input */}
-      <MessageInput chatId={chatId} />
+      {chatId && <MessageInput chatId={chatId} />}
     </div>
   );
 };

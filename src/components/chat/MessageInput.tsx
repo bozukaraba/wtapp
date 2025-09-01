@@ -14,6 +14,17 @@ interface MessageInputProps {
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
+  // Chat ID kontrolü
+  if (!chatId) {
+    console.error('MessageInput: chatId eksik!');
+    return (
+      <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+        <div className="text-center text-red-500">
+          Chat ID bulunamadı. Lütfen geçerli bir konuşma seçin.
+        </div>
+      </div>
+    );
+  }
   const [message, setMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
