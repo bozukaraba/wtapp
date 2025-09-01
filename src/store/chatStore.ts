@@ -36,6 +36,7 @@ interface ChatStore extends ChatState {
   loadMoreMessages: (chatId: string) => Promise<void>;
   createDirectChat: (otherUserId: string, currentUserId: string) => Promise<string>;
   createGroupChat: (name: string, members: string[], createdBy: string) => Promise<string>;
+  clearUnreadCount: (chatId: string) => void;
 }
 
 export const useChatStore = create<ChatStore>()((set, get) => ({
@@ -578,5 +579,15 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     } catch (error) {
       console.error('Chat okundu işaretleme hatası:', error);
     }
+  },
+
+  // Clear unread count for a specific chat
+  clearUnreadCount: (chatId: string) => {
+    set((state) => ({
+      unreadCounts: {
+        ...state.unreadCounts,
+        [chatId]: 0
+      }
+    }));
   }
 }));
