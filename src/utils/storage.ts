@@ -162,7 +162,7 @@ export class StorageManager {
     }
   }
 
-  // Resim yükleme (Firebase Storage - fallback)
+  // Resim yükleme (Base64 kullanarak CORS sorununu aşma)
   public async uploadImage(
     file: File, 
     chatId: string, 
@@ -170,11 +170,12 @@ export class StorageManager {
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
     try {
-      console.log('Firebase Storage resim yükleme deneniyor...');
-      return await this.uploadFile(file, `chats/${chatId}/images/${Date.now()}-${file.name}`, onProgress);
-    } catch (error) {
-      console.log('Firebase Storage başarısız, Base64\'e geçiliyor...');
+      // Doğrudan Base64'e geçiş yapıyoruz, CORS sorunlarını önlemek için
+      console.log('Resim yükleme - doğrudan Base64 kullanılıyor (CORS önlemi)');
       return await this.uploadImageBase64(file, chatId, userId, onProgress);
+    } catch (error) {
+      console.error('Base64 resim yükleme hatası:', error);
+      throw error;
     }
   }
 
@@ -217,7 +218,7 @@ export class StorageManager {
     }
   }
 
-  // Dosya yükleme (Firebase Storage - fallback)
+  // Dosya yükleme (Base64 kullanarak CORS sorununu aşma)
   public async uploadDocument(
     file: File, 
     chatId: string, 
@@ -225,15 +226,16 @@ export class StorageManager {
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
     try {
-      console.log('Firebase Storage dosya yükleme deneniyor...');
-      return await this.uploadFile(file, `chats/${chatId}/files/${Date.now()}-${file.name}`, onProgress);
-    } catch (error) {
-      console.log('Firebase Storage başarısız, Base64\'e geçiliyor...');
+      // Doğrudan Base64'e geçiş yapıyoruz, CORS sorunlarını önlemek için
+      console.log('Dosya yükleme - doğrudan Base64 kullanılıyor (CORS önlemi)');
       return await this.uploadDocumentBase64(file, chatId, userId, onProgress);
+    } catch (error) {
+      console.error('Base64 dosya yükleme hatası:', error);
+      throw error;
     }
   }
 
-  // Ses kaydı yükleme (boyut limiti kaldırıldı)
+  // Ses kaydı yükleme (Base64 kullanarak CORS sorununu aşma)
   public async uploadAudio(
     audioBlob: Blob, 
     chatId: string, 
@@ -241,18 +243,28 @@ export class StorageManager {
     duration: number
   ): Promise<UploadResult> {
     try {
-      console.log('Ses kaydı yükleme başlıyor:', audioBlob.size, 'bytes');
+      console.log('Ses kaydı yükleme başlıyor (Base64):', audioBlob.size, 'bytes');
 
       // Benzersiz dosya adı oluştur
       const timestamp = Date.now();
       const fileName = `${timestamp}-${Math.random().toString(36).substr(2, 9)}.webm`;
-      const path = `chats/${chatId}/audio/${fileName}`;
-
+      
       // Blob'u File'a çevir
       const file = new File([audioBlob], fileName, { type: 'audio/webm' });
-
-      console.log('Ses kaydı yükleme path:', path);
-      return await this.uploadFile(file, path);
+      
+      // Base64'e çevir
+      const base64Data = await fileToBase64(file);
+      console.log('Ses kaydı Base64\'e çevrildi');
+      
+      // Sonuç
+      const result = {
+        url: base64Data, // Base64 data URL
+        path: `base64://audio-${timestamp}`,
+        size: file.size
+      };
+      
+      console.log('Ses kaydı Base64 olarak hazırlandı');
+      return result;
     } catch (error) {
       console.error('Ses kaydı yükleme hatası:', error);
       throw error;
