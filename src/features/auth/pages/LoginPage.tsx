@@ -11,8 +11,13 @@ export const LoginPage: React.FC = () => {
 
   // Kullanıcı giriş yaptıktan sonra profil kurulumu gerekiyorsa göster
   React.useEffect(() => {
-    if (user && (!user.displayName || user.displayName === 'Misafir Kullanıcı' || user.displayName === 'Kullanıcı')) {
-      setStep('profile');
+    if (user) {
+      // Anonymous kullanıcılar için profil kurulumu opsiyonel
+      // Google kullanıcıları için profil kurulumu gerekli değil (zaten bilgileri var)
+      if (user.displayName === 'Kullanıcı' && !user.about) {
+        setStep('profile');
+      }
+      // Misafir kullanıcılar direkt chat'e yönlendirilir
     }
   }, [user]);
 

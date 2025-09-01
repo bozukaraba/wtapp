@@ -31,11 +31,14 @@ export const useAuthStore = create<AuthStore>()(
       initializeAuth: () => {
         onAuthStateChanged(auth, async (firebaseUser) => {
           if (firebaseUser) {
+            console.log('Firebase user:', firebaseUser);
+            console.log('Is anonymous:', firebaseUser.isAnonymous);
             try {
               const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
               
               if (userDoc.exists()) {
                 const userData = userDoc.data() as User;
+                console.log('Existing user data:', userData);
                 set({ 
                   user: userData, 
                   isAuthenticated: true, 
@@ -48,7 +51,7 @@ export const useAuthStore = create<AuthStore>()(
                 // İlk kez giriş yapan kullanıcı için profil oluştur
                 const newUser: User = {
                   uid: firebaseUser.uid,
-                  displayName: firebaseUser.displayName || firebaseUser.isAnonymous ? 'Misafir Kullanıcı' : 'Kullanıcı',
+                  displayName: firebaseUser.displayName || (firebaseUser.isAnonymous ? 'Misafir Kullanıcı' : 'Kullanıcı'),
                   photoURL: firebaseUser.photoURL || undefined,
                   phone: undefined,
                   about: firebaseUser.isAnonymous ? 'Misafir olarak katıldı' : 'Mevcut',
@@ -66,6 +69,7 @@ export const useAuthStore = create<AuthStore>()(
                   lastSeenAt: serverTimestamp()
                 });
 
+                console.log('New user created:', newUser);
                 set({ 
                   user: newUser, 
                   isAuthenticated: true, 
@@ -77,6 +81,7 @@ export const useAuthStore = create<AuthStore>()(
               set({ isLoading: false });
             }
           } else {
+            console.log('No firebase user, signing out');
             set({ 
               user: null, 
               isAuthenticated: false, 
@@ -104,6 +109,7 @@ export const useAuthStore = create<AuthStore>()(
           set({ isLoading: true });
           await signInAnonymously(auth);
           // onAuthStateChanged otomatik olarak tetiklenecek
+          set({ isLoading: false });
         } catch (error) {
           console.error('Anonim giriş hatası:', error);
           set({ isLoading: false });
