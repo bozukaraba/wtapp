@@ -16,6 +16,7 @@ import { useUIStore } from '@/store/uiStore';
 // Components
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 // Styles
 import '@/styles/globals.css';
@@ -55,57 +56,59 @@ function App() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          <Routes>
-            {/* Public Routes */}
-            <Route 
-              path="/login" 
-              element={
-                isAuthenticated ? <Navigate to="/chats" replace /> : <LoginPage />
-              } 
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <Routes>
+              {/* Public Routes */}
+              <Route 
+                path="/login" 
+                element={
+                  isAuthenticated ? <Navigate to="/chats" replace /> : <LoginPage />
+                } 
+              />
+
+              {/* Protected Routes */}
+              <Route path="/" element={<ProtectedRoute />}>
+                <Route index element={<Navigate to="/chats" replace />} />
+                <Route path="chats" element={<ChatListPage />} />
+                <Route path="chats/:chatId" element={<ChatPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+              </Route>
+
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+
+            {/* Global Toast Notifications */}
+            <Toaster
+              position="top-center"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: theme.mode === 'dark' ? '#374151' : '#ffffff',
+                  color: theme.mode === 'dark' ? '#f3f4f6' : '#111827',
+                  border: `1px solid ${theme.mode === 'dark' ? '#4b5563' : '#e5e7eb'}`,
+                },
+                success: {
+                  iconTheme: {
+                    primary: '#10b981',
+                    secondary: '#ffffff',
+                  },
+                },
+                error: {
+                  iconTheme: {
+                    primary: '#ef4444',
+                    secondary: '#ffffff',
+                  },
+                },
+              }}
             />
-
-            {/* Protected Routes */}
-            <Route path="/" element={<ProtectedRoute />}>
-              <Route index element={<Navigate to="/chats" replace />} />
-              <Route path="chats" element={<ChatListPage />} />
-              <Route path="chats/:chatId" element={<ChatPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-
-          {/* Global Toast Notifications */}
-          <Toaster
-            position="top-center"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: theme.mode === 'dark' ? '#374151' : '#ffffff',
-                color: theme.mode === 'dark' ? '#f3f4f6' : '#111827',
-                border: `1px solid ${theme.mode === 'dark' ? '#4b5563' : '#e5e7eb'}`,
-              },
-              success: {
-                iconTheme: {
-                  primary: '#10b981',
-                  secondary: '#ffffff',
-                },
-              },
-              error: {
-                iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#ffffff',
-                },
-              },
-            }}
-          />
-        </div>
-      </Router>
-    </QueryClientProvider>
+          </div>
+        </Router>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
