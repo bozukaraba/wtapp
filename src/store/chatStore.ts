@@ -37,6 +37,7 @@ interface ChatStore extends ChatState {
   createDirectChat: (otherUserId: string, currentUserId: string) => Promise<string>;
   createGroupChat: (name: string, members: string[], createdBy: string) => Promise<string>;
   clearUnreadCount: (chatId: string) => void;
+  lastNotificationTime?: number;
 }
 
 export const useChatStore = create<ChatStore>()((set, get) => ({
@@ -48,6 +49,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   isLoading: false,
   hasMore: true,
   lastVisible: null,
+  lastNotificationTime: 0,
 
   subscribeToChats: (userId: string) => {
     console.log('Chat listesini dinlemeye başlıyor:', userId);
@@ -156,11 +158,16 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       const sortedMessages = messages.reverse();
       console.log('Parse edilmiş mesajlar:', sortedMessages);
 
-      // Yeni mesaj bildirimi kontrolü
+      // Yeni mesaj bildirimi kontrolü (rate limiting ile)
       const currentMessages = get().messages[chatId] || [];
       const newMessages = sortedMessages.filter(msg => 
         !currentMessages.some(existing => existing.id === msg.id)
       );
+
+      // Rate limiting: Çok fazla bildirim gönderilmesini önle
+      const lastNotificationTime = get().lastNotificationTime || 0;
+      const now = Date.now();
+      const shouldShowNotification = now - lastNotificationTime > 2000; // 2 saniye aralık
 
       // Unread count güncelle ve bildirim göster
       const currentUserId = JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.user?.uid;
@@ -175,8 +182,8 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
             }
           }));
 
-          // Sayfa aktif değilse bildirim göster
-          if (document.visibilityState !== 'visible') {
+          // Sayfa aktif değilse ve rate limit aşılmamışsa bildirim göster
+          if (document.visibilityState !== 'visible' && shouldShowNotification) {
             try {
               // Gönderen kullanıcının bilgilerini al
               const { useAuthStore } = await import('@/store/authStore');
@@ -198,6 +205,9 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
 
               // Ses çal
               notificationManager.playNotificationSound();
+              
+              // Son bildirim zamanını güncelle
+              set({ lastNotificationTime: now });
             } catch (error) {
               console.error('Bildirim gösterme hatası:', error);
             }

@@ -98,41 +98,47 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         const isAudio = message.mediaType?.startsWith('audio/') && message.mediaType !== 'audio/webm'; // Exclude voice messages
         
         if (isVideo) {
+          // Video dosyası için download link göster (Base64 video oynatma sorunları nedeniyle)
           return (
-            <div className="media-preview">
-              <div className="relative">
-                <video
-                  src={message.mediaURL}
-                  controls
-                  className="max-w-xs max-h-64 rounded-lg"
-                  preload="metadata"
-                  onError={(e) => {
-                    console.error('Video oynatma hatası:', e);
-                    console.log('Video URL:', message.mediaURL);
-                    console.log('Video URL type:', typeof message.mediaURL);
-                    console.log('Video URL starts with data:', message.mediaURL?.startsWith('data:'));
-                  }}
-                  onLoadStart={() => {
-                    console.log('Video yükleniyor:', message.mediaURL?.substring(0, 100) + '...');
-                  }}
-                  onCanPlay={() => {
-                    console.log('Video oynatılabilir durumda');
-                  }}
-                >
-                  Tarayıcınız video oynatmayı desteklemiyor.
-                </video>
-                
-                {/* Video yüklenemezse fallback göster */}
-                <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                  <div className="text-center">
-                    <Play className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {message.fileName || 'Video'}
-                    </p>
-                  </div>
+            <div className="file-message">
+              <div className="flex items-center p-3 bg-gray-100 dark:bg-gray-800 rounded-lg max-w-xs">
+                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white mr-3">
+                  <Play className="w-5 h-5" />
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    {message.fileName || 'Video dosyası'}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Video • {message.fileSize ? (message.fileSize / (1024 * 1024)).toFixed(1) + ' MB' : 'Bilinmeyen boyut'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (message.mediaURL) {
+                      // Base64 video'yu yeni sekmede aç
+                      const newWindow = window.open();
+                      if (newWindow) {
+                        newWindow.document.write(`
+                          <html>
+                            <head><title>Video</title></head>
+                            <body style="margin:0; background:#000; display:flex; justify-content:center; align-items:center; height:100vh;">
+                              <video controls autoplay style="max-width:100%; max-height:100%;">
+                                <source src="${message.mediaURL}" type="${message.mediaType}">
+                                Tarayıcınız video oynatmayı desteklemiyor.
+                              </video>
+                            </body>
+                          </html>
+                        `);
+                      }
+                    }
+                  }}
+                  className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900 rounded-full transition-colors"
+                  title="Videoyu oynat"
+                >
+                  <Play className="w-4 h-4" />
+                </button>
               </div>
-              
               {message.text && (
                 <p className="mt-2 whitespace-pre-wrap break-words">
                   {message.text}
