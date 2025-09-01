@@ -309,6 +309,12 @@ export const ChatPage: React.FC = () => {
             </div>
           ) : (
             chatMessages.map((message, index) => {
+              // Mesaj geçerliliği kontrolü
+              if (!message || !message.id || !message.from) {
+                console.warn('Geçersiz mesaj atlandı:', message);
+                return null;
+              }
+
               const isOwn = message.from === user?.uid;
               const prevMessage = chatMessages[index - 1];
               const showAvatar = activeChat?.type === 'group' && 
@@ -323,7 +329,7 @@ export const ChatPage: React.FC = () => {
                   senderName={showAvatar ? `Kullanıcı ${message.from.slice(-4)}` : undefined}
                 />
               );
-            })
+            }).filter(Boolean)
           )}
 
           {/* Typing indicator */}

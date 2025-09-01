@@ -19,7 +19,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   showAvatar = false,
   senderName
 }) => {
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | undefined) => {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      return '--:--';
+    }
     return date.toLocaleTimeString('tr-TR', { 
       hour: '2-digit', 
       minute: '2-digit' 
@@ -29,8 +32,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const getMessageStatus = () => {
     if (!isOwn) return null;
 
-    const isRead = message.readBy.length > 0;
-    const isDelivered = message.deliveredTo.length > 0;
+    // Güvenli array kontrolü
+    const readBy = Array.isArray(message.readBy) ? message.readBy : [];
+    const deliveredTo = Array.isArray(message.deliveredTo) ? message.deliveredTo : [];
+
+    const isRead = readBy.length > 0;
+    const isDelivered = deliveredTo.length > 0;
 
     if (isRead) {
       return <CheckCheck className="w-4 h-4 text-blue-500" />;
@@ -46,7 +53,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       case 'text':
         return (
           <p className="whitespace-pre-wrap break-words">
-            {message.text}
+            {message.text || 'Boş mesaj'}
           </p>
         );
 

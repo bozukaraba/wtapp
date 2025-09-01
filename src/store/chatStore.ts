@@ -137,11 +137,11 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
           replyTo: data.replyTo,
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
           updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
-          deliveredTo: data.deliveredTo || [],
-          readBy: data.readBy?.map((read: any) => ({
+          deliveredTo: Array.isArray(data.deliveredTo) ? data.deliveredTo : [],
+          readBy: Array.isArray(data.readBy) ? data.readBy.map((read: any) => ({
             userId: read.userId,
             readAt: read.readAt?.toDate ? read.readAt.toDate() : new Date()
-          })) || [],
+          })) : [],
           duration: data.duration
         };
         
