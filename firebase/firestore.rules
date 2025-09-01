@@ -16,14 +16,11 @@ service cloud.firestore {
         request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
     }
 
-    // Users collection
+    // Users collection - Anonymous users için gevşetildi
     match /users/{uid} {
       allow read: if isAuthed();
-      allow create: if isOwner(uid) && 
-        request.resource.data.keys().hasAll(['uid', 'displayName', 'createdAt']) &&
-        request.resource.data.uid == uid;
-      allow update: if isOwner(uid) && 
-        request.resource.data.uid == uid;
+      allow create: if isAuthed(); // Anonymous users da yazabilsin
+      allow update: if isAuthed() && (isOwner(uid) || request.auth.uid == uid);
       allow delete: if false; // Users can't be deleted
     }
 
