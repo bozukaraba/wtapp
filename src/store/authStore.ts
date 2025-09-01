@@ -7,9 +7,10 @@ import {
   signInAnonymously,
   signOut as firebaseSignOut
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, query, collection, where, getDocs, addDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { User, AuthState } from '@/types';
+import { generateUniqueUsername, generateUsernameId, formatUsername } from '@/utils/usernames';
 
 interface AuthStore extends AuthState {
   // Actions
@@ -19,6 +20,8 @@ interface AuthStore extends AuthState {
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   setUserOnline: (online: boolean) => Promise<void>;
+  findUserByUsername: (username: string) => Promise<User | null>;
+  createDirectChatByUsername: (username: string) => Promise<string>;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -55,10 +58,40 @@ export const useAuthStore = create<AuthStore>()(
                 // Kullanıcıyı online yap
                 await get().setUserOnline(true);
               } else {
+                // Benzersiz username oluştur
+                let uniqueUsername = '';
+                let usernameId = '';
+                let isUsernameUnique = false;
+                let attempts = 0;
+                
+                while (!isUsernameUnique && attempts < 5) {
+                  const baseUsername = generateUniqueUsername();
+                  usernameId = generateUsernameId();
+                  uniqueUsername = formatUsername(baseUsername, usernameId);
+                  
+                  // Username'in benzersiz olup olmadığını kontrol et
+                  const usernameQuery = query(
+                    collection(db, 'users'),
+                    where('username', '==', uniqueUsername)
+                  );
+                  
+                  try {
+                    const usernameSnapshot = await getDocs(usernameQuery);
+                    isUsernameUnique = usernameSnapshot.empty;
+                    attempts++;
+                  } catch (error) {
+                    // Firestore hatası durumunda random username kullan
+                    console.error('Username kontrolü hatası:', error);
+                    isUsernameUnique = true;
+                  }
+                }
+
                 // İlk kez giriş yapan kullanıcı için profil oluştur
                 const newUser: User = {
                   uid: firebaseUser.uid,
                   displayName: firebaseUser.displayName || (firebaseUser.isAnonymous ? 'Misafir Kullanıcı' : 'Kullanıcı'),
+                  username: uniqueUsername,
+                  usernameId: usernameId,
                   photoURL: firebaseUser.photoURL || undefined,
                   phone: undefined,
                   about: firebaseUser.isAnonymous ? 'Misafir olarak katıldı' : 'Mevcut',
@@ -214,6 +247,80 @@ export const useAuthStore = create<AuthStore>()(
               lastSeenAt: new Date() 
             } 
           });
+        }
+      },
+
+      findUserByUsername: async (username: string) => {
+        try {
+          const q = query(
+            collection(db, 'users'),
+            where('username', '==', username)
+          );
+          
+          const snapshot = await getDocs(q);
+          
+          if (!snapshot.empty) {
+            const userData = snapshot.docs[0].data() as User;
+            return {
+              ...userData,
+              createdAt: userData.createdAt || new Date(),
+              updatedAt: userData.updatedAt || new Date(),
+              lastSeenAt: userData.lastSeenAt || new Date()
+            };
+          }
+          
+          return null;
+        } catch (error) {
+          console.error('Username ile kullanıcı arama hatası:', error);
+          return null;
+        }
+      },
+
+      createDirectChatByUsername: async (username: string) => {
+        const { user } = get();
+        if (!user) throw new Error('Kullanıcı bulunamadı');
+
+        try {
+          // Username ile kullanıcıyı bul
+          const foundUser = await get().findUserByUsername(username);
+          if (!foundUser) {
+            throw new Error('Kullanıcı bulunamadı');
+          }
+
+          if (foundUser.uid === user.uid) {
+            throw new Error('Kendinizle sohbet başlatamazsınız');
+          }
+
+          // Mevcut direkt chat'i kontrol et
+          const chatQuery = query(
+            collection(db, 'chats'),
+            where('type', '==', 'direct'),
+            where('members', 'array-contains', user.uid)
+          );
+
+          const chatSnapshot = await getDocs(chatQuery);
+          const existingChat = chatSnapshot.docs.find(doc => {
+            const data = doc.data();
+            return data.members.includes(foundUser.uid);
+          });
+
+          if (existingChat) {
+            return existingChat.id;
+          }
+
+          // Yeni direkt chat oluştur
+          const chatData = {
+            type: 'direct',
+            members: [user.uid, foundUser.uid],
+            createdAt: serverTimestamp(),
+            createdBy: user.uid
+          };
+
+          const docRef = await addDoc(collection(db, 'chats'), chatData);
+          return docRef.id;
+        } catch (error) {
+          console.error('Username ile chat oluşturma hatası:', error);
+          throw error;
         }
       }
     }),

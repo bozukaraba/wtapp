@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
+import { UsernameChat } from '@/components/chat/UsernameChat';
 import { useDiscoveryStore } from '@/store/discoveryStore';
 import { useChatStore } from '@/store/chatStore';
 import { useAuthStore } from '@/store/authStore';
@@ -11,14 +12,15 @@ import {
   MessageCircle, 
   Navigation,
   RefreshCw,
-  Settings
+  Settings,
+  Hash
 } from 'lucide-react';
 import { User } from '@/types';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
 
 export const UserDiscovery: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'random' | 'nearby'>('random');
+  const [activeTab, setActiveTab] = useState<'username' | 'random' | 'nearby'>('username');
   const [isLocationEnabled, setIsLocationEnabled] = useState(false);
   
   const { 
@@ -172,28 +174,41 @@ export const UserDiscovery: React.FC = () => {
       {/* Tabs */}
       <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 mb-6">
         <button
+          onClick={() => setActiveTab('username')}
+          className={clsx(
+            'flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors',
+            activeTab === 'username'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+          )}
+        >
+          <Hash className="w-4 h-4 inline mr-1" />
+          Kullanıcı Adı
+        </button>
+        
+        <button
           onClick={() => setActiveTab('random')}
           className={clsx(
-            'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors',
+            'flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors',
             activeTab === 'random'
               ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
           )}
         >
-          <Shuffle className="w-4 h-4 inline mr-2" />
+          <Shuffle className="w-4 h-4 inline mr-1" />
           Rastgele
         </button>
         
         <button
           onClick={() => setActiveTab('nearby')}
           className={clsx(
-            'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors',
+            'flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors',
             activeTab === 'nearby'
               ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
           )}
         >
-          <MapPin className="w-4 h-4 inline mr-2" />
+          <MapPin className="w-4 h-4 inline mr-1" />
           Yakındaki
         </button>
       </div>
@@ -258,6 +273,10 @@ export const UserDiscovery: React.FC = () => {
 
       {/* User List */}
       <div className="space-y-3">
+        {activeTab === 'username' && (
+          <UsernameChat />
+        )}
+
         {activeTab === 'random' && (
           <>
             {randomUsers.length > 0 ? (

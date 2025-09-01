@@ -216,16 +216,53 @@ export const useDiscoveryStore = create<DiscoveryStore>()((set, get) => ({
 
   requestLocation: async () => {
     try {
+      // Geolocation desteği kontrolü
       if (!navigator.geolocation) {
-        throw new Error('Geolocation desteklenmiyor');
+        throw new Error('Bu tarayıcı konum servislerini desteklemiyor');
+      }
+
+      console.log('Konum izni isteniyor...');
+
+      // İzin durumunu kontrol et
+      if ('permissions' in navigator) {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        console.log('Mevcut konum izni durumu:', permission.state);
+        
+        if (permission.state === 'denied') {
+          throw new Error('Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.');
+        }
       }
 
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 dakika cache
-        });
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            console.log('Konum başarıyla alındı:', position.coords);
+            resolve(position);
+          },
+          (error) => {
+            console.error('Geolocation hatası:', error);
+            let errorMessage = 'Konum alınamadı';
+            
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage = 'Konum izni reddedildi. Tarayıcı ayarlarından izin verin.';
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage = 'Konum bilgisi mevcut değil.';
+                break;
+              case error.TIMEOUT:
+                errorMessage = 'Konum alma zaman aşımına uğradı.';
+                break;
+            }
+            
+            reject(new Error(errorMessage));
+          },
+          {
+            enableHighAccuracy: false, // Daha hızlı yanıt için
+            timeout: 15000, // 15 saniye timeout
+            maximumAge: 600000 // 10 dakika cache
+          }
+        );
       });
 
       const { latitude, longitude } = position.coords;
@@ -238,17 +275,26 @@ export const useDiscoveryStore = create<DiscoveryStore>()((set, get) => ({
         const response = await fetch(
           `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=tr`
         );
-        const data = await response.json();
-        city = data.city || data.locality || 'Bilinmeyen';
-        country = data.countryName || 'Türkiye';
+        
+        if (response.ok) {
+          const data = await response.json();
+          city = data.city || data.locality || data.principalSubdivision || 'Bilinmeyen';
+          country = data.countryName || 'Türkiye';
+        }
       } catch (error) {
-        console.log('Reverse geocoding hatası:', error);
+        console.log('Reverse geocoding hatası (normal):', error);
       }
 
       const location = { latitude, longitude, city, country };
-      set({ userLocation: location });
+      set({ 
+        userLocation: location,
+        discoveryPreferences: {
+          ...get().discoveryPreferences,
+          enableLocation: true
+        }
+      });
       
-      console.log('Konum alındı:', location);
+      console.log('Konum başarıyla kaydedildi:', location);
       return location;
     } catch (error) {
       console.error('Konum alma hatası:', error);

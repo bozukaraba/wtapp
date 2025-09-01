@@ -1,6 +1,8 @@
 export interface User {
   uid: string;
   displayName: string;
+  username?: string; // Benzersiz kullanıcı adı (örn: "NeşeliMaviAslan123#A1B2C3")
+  usernameId?: string; // 6 haneli ID kısmı
   photoURL?: string;
   phone?: string;
   about?: string;
