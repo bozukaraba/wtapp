@@ -5,6 +5,12 @@ import {
   signInWithPopup, 
   GoogleAuthProvider,
   signInAnonymously,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   signOut as firebaseSignOut
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, query, collection, where, getDocs, addDoc } from 'firebase/firestore';
@@ -17,6 +23,10 @@ interface AuthStore extends AuthState {
   initializeAuth: () => void;
   signInWithGoogle: () => Promise<void>;
   signInAnonymously: () => Promise<void>;
+  signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   setUserOnline: (online: boolean) => Promise<void>;
@@ -161,6 +171,193 @@ export const useAuthStore = create<AuthStore>()(
           console.error('Anonim giriş hatası:', error);
           set({ isLoading: false });
           throw error;
+        }
+      },
+
+      signUpWithEmail: async (email: string, password: string, displayName: string) => {
+        try {
+          set({ isLoading: true });
+          
+          // Email ile yeni hesap oluştur
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const firebaseUser = userCredential.user;
+          
+          // Benzersiz username oluştur
+          let uniqueUsername = '';
+          let usernameId = '';
+          let isUsernameUnique = false;
+          let attempts = 0;
+          
+          while (!isUsernameUnique && attempts < 5) {
+            const baseUsername = generateUniqueUsername();
+            usernameId = generateUsernameId();
+            uniqueUsername = formatUsername(baseUsername, usernameId);
+            
+            try {
+              const usernameQuery = query(
+                collection(db, 'users'),
+                where('username', '==', uniqueUsername)
+              );
+              const usernameSnapshot = await getDocs(usernameQuery);
+              isUsernameUnique = usernameSnapshot.empty;
+              attempts++;
+            } catch (error) {
+              console.error('Username kontrolü hatası:', error);
+              isUsernameUnique = true;
+            }
+          }
+
+          // Kullanıcı profilini Firestore'a kaydet
+          const newUser: User = {
+            uid: firebaseUser.uid,
+            displayName: displayName.trim(),
+            username: uniqueUsername,
+            usernameId: usernameId,
+            photoURL: undefined,
+            phone: undefined,
+            about: 'Mevcut',
+            lastSeenAt: new Date(),
+            isOnline: true,
+            pushTokens: [],
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+
+          await setDoc(doc(db, 'users', firebaseUser.uid), {
+            ...newUser,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastSeenAt: serverTimestamp()
+          });
+
+          console.log('Email ile kayıt tamamlandı:', newUser);
+          set({ isLoading: false });
+          
+          // onAuthStateChanged otomatik olarak tetiklenecek
+        } catch (error: any) {
+          console.error('Email kayıt hatası:', error);
+          set({ isLoading: false });
+          
+          // Firebase hata kodlarını Türkçe'ye çevir
+          let errorMessage = 'Kayıt olurken bir hata oluştu';
+          
+          switch (error.code) {
+            case 'auth/email-already-in-use':
+              errorMessage = 'Bu email adresi zaten kullanımda';
+              break;
+            case 'auth/invalid-email':
+              errorMessage = 'Geçersiz email adresi';
+              break;
+            case 'auth/operation-not-allowed':
+              errorMessage = 'Email/şifre girişi etkinleştirilmemiş';
+              break;
+            case 'auth/weak-password':
+              errorMessage = 'Şifre çok zayıf (en az 6 karakter olmalı)';
+              break;
+            default:
+              errorMessage = error.message || 'Kayıt olurken bir hata oluştu';
+          }
+          
+          throw new Error(errorMessage);
+        }
+      },
+
+      signInWithEmail: async (email: string, password: string) => {
+        try {
+          set({ isLoading: true });
+          await signInWithEmailAndPassword(auth, email, password);
+          // onAuthStateChanged otomatik olarak tetiklenecek
+          set({ isLoading: false });
+        } catch (error: any) {
+          console.error('Email giriş hatası:', error);
+          set({ isLoading: false });
+          
+          // Firebase hata kodlarını Türkçe'ye çevir
+          let errorMessage = 'Giriş yapılırken bir hata oluştu';
+          
+          switch (error.code) {
+            case 'auth/user-disabled':
+              errorMessage = 'Bu hesap devre dışı bırakılmış';
+              break;
+            case 'auth/user-not-found':
+              errorMessage = 'Bu email adresi ile kayıtlı kullanıcı bulunamadı';
+              break;
+            case 'auth/wrong-password':
+              errorMessage = 'Hatalı şifre';
+              break;
+            case 'auth/invalid-email':
+              errorMessage = 'Geçersiz email adresi';
+              break;
+            case 'auth/too-many-requests':
+              errorMessage = 'Çok fazla başarısız deneme. Lütfen daha sonra tekrar deneyin';
+              break;
+            default:
+              errorMessage = error.message || 'Giriş yapılırken bir hata oluştu';
+          }
+          
+          throw new Error(errorMessage);
+        }
+      },
+
+      resetPassword: async (email: string) => {
+        try {
+          await sendPasswordResetEmail(auth, email);
+          console.log('Şifre sıfırlama emaili gönderildi');
+        } catch (error: any) {
+          console.error('Şifre sıfırlama hatası:', error);
+          
+          let errorMessage = 'Şifre sıfırlama emaili gönderilemedi';
+          
+          switch (error.code) {
+            case 'auth/user-not-found':
+              errorMessage = 'Bu email adresi ile kayıtlı kullanıcı bulunamadı';
+              break;
+            case 'auth/invalid-email':
+              errorMessage = 'Geçersiz email adresi';
+              break;
+            default:
+              errorMessage = error.message || 'Şifre sıfırlama emaili gönderilemedi';
+          }
+          
+          throw new Error(errorMessage);
+        }
+      },
+
+      changePassword: async (currentPassword: string, newPassword: string) => {
+        const currentUser = auth.currentUser;
+        if (!currentUser || !currentUser.email) {
+          throw new Error('Kullanıcı bulunamadı');
+        }
+
+        try {
+          // Mevcut şifre ile yeniden doğrulama
+          const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+          await reauthenticateWithCredential(currentUser, credential);
+          
+          // Yeni şifreyi ayarla
+          await updatePassword(currentUser, newPassword);
+          
+          console.log('Şifre başarıyla değiştirildi');
+        } catch (error: any) {
+          console.error('Şifre değiştirme hatası:', error);
+          
+          let errorMessage = 'Şifre değiştirilirken bir hata oluştu';
+          
+          switch (error.code) {
+            case 'auth/wrong-password':
+              errorMessage = 'Mevcut şifre hatalı';
+              break;
+            case 'auth/weak-password':
+              errorMessage = 'Yeni şifre çok zayıf (en az 6 karakter olmalı)';
+              break;
+            case 'auth/requires-recent-login':
+              errorMessage = 'Güvenlik nedeniyle tekrar giriş yapmanız gerekiyor';
+              break;
+            default:
+              errorMessage = error.message || 'Şifre değiştirilirken bir hata oluştu';
+          }
+          
+          throw new Error(errorMessage);
         }
       },
 
