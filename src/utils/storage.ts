@@ -135,13 +135,58 @@ export class StorageManager {
     }
   }
 
-  // Ana dosya yükleme metodu - sadece Base64 kullanır
+  // Video dosyası için blob URL yükleme
+  public async uploadVideoAsBlob(
+    file: File, 
+    _chatId: string, 
+    _userId: string,
+    onProgress?: (progress: number) => void
+  ): Promise<UploadResult> {
+    try {
+      console.log('Video blob URL oluşturuluyor:', file.name, file.size, 'bytes');
+
+      if (onProgress) onProgress(50);
+
+      // Blob URL oluştur
+      const blobUrl = URL.createObjectURL(file);
+      console.log('Video blob URL oluşturuldu:', blobUrl);
+      
+      if (onProgress) onProgress(100);
+
+      const result = {
+        url: blobUrl, // Blob URL
+        path: `blob://${file.name}`,
+        size: file.size
+      };
+
+      console.log('Video blob yükleme tamamlandı');
+      return result;
+    } catch (error) {
+      console.error('Video blob yükleme hatası:', error);
+      throw error;
+    }
+  }
+
+  // Ana dosya yükleme metodu - video için özel çözüm
   public async uploadDocument(
     file: File, 
     chatId: string, 
     userId: string,
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
+    // Video dosyaları için de Base64 kullan ama daha küçük boyutta
+    if (file.type.startsWith('video/')) {
+      console.log('Video dosyası tespit edildi, Base64 kullanılıyor...');
+      
+      // Video dosyası çok büyükse uyarı ver
+      if (file.size > 50 * 1024 * 1024) { // 50MB
+        throw new Error('Video dosyası çok büyük. Lütfen 50MB\'dan küçük bir video seçin.');
+      }
+      
+      return await this.uploadDocumentBase64(file, chatId, userId, onProgress);
+    }
+    
+    // Diğer dosyalar için Base64
     return await this.uploadDocumentBase64(file, chatId, userId, onProgress);
   }
 

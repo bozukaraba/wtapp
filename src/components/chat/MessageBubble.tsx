@@ -100,14 +100,39 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         if (isVideo) {
           return (
             <div className="media-preview">
-              <video
-                src={message.mediaURL}
-                controls
-                className="max-w-xs max-h-64 rounded-lg"
-                preload="metadata"
-              >
-                Tarayıcınız video oynatmayı desteklemiyor.
-              </video>
+              <div className="relative">
+                <video
+                  src={message.mediaURL}
+                  controls
+                  className="max-w-xs max-h-64 rounded-lg"
+                  preload="metadata"
+                  onError={(e) => {
+                    console.error('Video oynatma hatası:', e);
+                    console.log('Video URL:', message.mediaURL);
+                    console.log('Video URL type:', typeof message.mediaURL);
+                    console.log('Video URL starts with data:', message.mediaURL?.startsWith('data:'));
+                  }}
+                  onLoadStart={() => {
+                    console.log('Video yükleniyor:', message.mediaURL?.substring(0, 100) + '...');
+                  }}
+                  onCanPlay={() => {
+                    console.log('Video oynatılabilir durumda');
+                  }}
+                >
+                  Tarayıcınız video oynatmayı desteklemiyor.
+                </video>
+                
+                {/* Video yüklenemezse fallback göster */}
+                <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                  <div className="text-center">
+                    <Play className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {message.fileName || 'Video'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
               {message.text && (
                 <p className="mt-2 whitespace-pre-wrap break-words">
                   {message.text}
