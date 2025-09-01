@@ -4,11 +4,11 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-gray-200 dark:border-gray-700;
   }
   
   body {
-    @apply bg-background text-foreground;
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -182,15 +182,9 @@
   }
 }
 
-/* Dark mode variables */
+/* Custom CSS variables for theme consistency */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --border: 214.3 31.8% 91.4%;
-}
-
-.dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
+  --primary-50: #ecfdf5;
+  --primary-500: #10b981;
+  --primary-600: #059669;
 }
