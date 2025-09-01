@@ -112,6 +112,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onPhoneAuth }) => {
           className="mb-4"
         />
 
+        {/* Test numaraları bilgilendirmesi */}
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-2">
+            🧪 Test için kullanabileceğiniz numaralar:
+          </p>
+          <div className="text-xs text-blue-600 dark:text-blue-400 space-y-1">
+            <div>• <code>+905551234567</code> (Kod: 123456)</div>
+            <div>• <code>+905559876543</code> (Kod: 123456)</div>
+            <div>• <code>+905551111111</code> (Kod: 123456)</div>
+          </div>
+        </div>
+
         <Button type="submit" size="lg" className="w-full">
           SMS Kodu Gönder
         </Button>

@@ -106,6 +106,30 @@ export const useAuthStore = create<AuthStore>()(
         try {
           set({ isLoading: true });
           
+          // Test numaraları için özel işlem
+          const testNumbers = ['+905551234567', '+905559876543', '+905551111111'];
+          if (testNumbers.includes(phoneNumber)) {
+            // Test numarası için mock confirmation result
+            const mockConfirmationResult = {
+              confirm: async (code: string) => {
+                if (code === '123456') {
+                  // Mock user credential
+                  return Promise.resolve({
+                    user: {
+                      uid: 'test-user-' + Date.now(),
+                      phoneNumber: phoneNumber,
+                      displayName: 'Test Kullanıcı'
+                    }
+                  });
+                } else {
+                  throw new Error('auth/invalid-verification-code');
+                }
+              }
+            };
+            set({ isLoading: false });
+            return mockConfirmationResult as any;
+          }
+          
           // Recaptcha verifier oluştur
           if (!window.recaptchaVerifier) {
             window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
