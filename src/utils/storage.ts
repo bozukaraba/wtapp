@@ -7,6 +7,39 @@ export interface UploadResult {
   size: number;
 }
 
+// Base64 helper functions
+export const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+};
+
+export const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.8): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      // Calculate new dimensions
+      const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+      canvas.width = img.width * ratio;
+      canvas.height = img.height * ratio;
+      
+      // Draw and compress
+      ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+      resolve(compressedBase64);
+    };
+    
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 export class StorageManager {
   private static instance: StorageManager;
 
@@ -90,7 +123,46 @@ export class StorageManager {
     }
   }
 
-  // Resim yükleme (boyut limiti kaldırıldı)
+  // Base64 resim yükleme (CORS sorununu önler)
+  public async uploadImageBase64(
+    file: File, 
+    chatId: string, 
+    userId: string,
+    onProgress?: (progress: number) => void
+  ): Promise<UploadResult> {
+    try {
+      console.log('=== BASE64 RESİM YÜKLEME BAŞLIYOR ===');
+      console.log('Dosya:', file.name, file.size, 'bytes');
+
+      if (onProgress) onProgress(10);
+
+      // Resmi sıkıştır ve Base64'e çevir
+      const base64Data = await compressImage(file, 800, 0.8);
+      console.log('Resim sıkıştırıldı ve Base64\'e çevrildi');
+      
+      if (onProgress) onProgress(50);
+
+      // Benzersiz ID oluştur
+      const timestamp = Date.now();
+      const fileId = `${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      if (onProgress) onProgress(100);
+
+      const result = {
+        url: base64Data, // Base64 data URL
+        path: `base64://${fileId}`,
+        size: file.size
+      };
+
+      console.log('=== BASE64 RESİM YÜKLEME TAMAMLANDI ===');
+      return result;
+    } catch (error) {
+      console.error('Base64 resim yükleme hatası:', error);
+      throw error;
+    }
+  }
+
+  // Resim yükleme (Firebase Storage - fallback)
   public async uploadImage(
     file: File, 
     chatId: string, 
@@ -98,23 +170,54 @@ export class StorageManager {
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
     try {
-      console.log('Resim yükleme başlıyor:', file.name, file.size, 'bytes');
-
-      // Benzersiz dosya adı oluştur
-      const timestamp = Date.now();
-      const extension = file.name.split('.').pop() || 'jpg';
-      const fileName = `${timestamp}-${Math.random().toString(36).substr(2, 9)}.${extension}`;
-      const path = `chats/${chatId}/images/${fileName}`;
-
-      console.log('Resim yükleme path:', path);
-      return await this.uploadFile(file, path, onProgress);
+      console.log('Firebase Storage resim yükleme deneniyor...');
+      return await this.uploadFile(file, `chats/${chatId}/images/${Date.now()}-${file.name}`, onProgress);
     } catch (error) {
-      console.error('Resim yükleme hatası:', error);
+      console.log('Firebase Storage başarısız, Base64\'e geçiliyor...');
+      return await this.uploadImageBase64(file, chatId, userId, onProgress);
+    }
+  }
+
+  // Base64 dosya yükleme (küçük dosyalar için)
+  public async uploadDocumentBase64(
+    file: File, 
+    chatId: string, 
+    userId: string,
+    onProgress?: (progress: number) => void
+  ): Promise<UploadResult> {
+    try {
+      console.log('=== BASE64 DOSYA YÜKLEME BAŞLIYOR ===');
+      console.log('Dosya:', file.name, file.size, 'bytes', file.type);
+
+      if (onProgress) onProgress(10);
+
+      // Dosyayı Base64'e çevir
+      const base64Data = await fileToBase64(file);
+      console.log('Dosya Base64\'e çevrildi');
+      
+      if (onProgress) onProgress(50);
+
+      // Benzersiz ID oluştur
+      const timestamp = Date.now();
+      const fileId = `${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      if (onProgress) onProgress(100);
+
+      const result = {
+        url: base64Data, // Base64 data URL
+        path: `base64://${fileId}`,
+        size: file.size
+      };
+
+      console.log('=== BASE64 DOSYA YÜKLEME TAMAMLANDI ===');
+      return result;
+    } catch (error) {
+      console.error('Base64 dosya yükleme hatası:', error);
       throw error;
     }
   }
 
-  // Dosya yükleme (boyut limiti kaldırıldı)
+  // Dosya yükleme (Firebase Storage - fallback)
   public async uploadDocument(
     file: File, 
     chatId: string, 
@@ -122,19 +225,11 @@ export class StorageManager {
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
     try {
-      console.log('Dosya yükleme başlıyor:', file.name, file.size, 'bytes', file.type);
-
-      // Benzersiz dosya adı oluştur
-      const timestamp = Date.now();
-      const extension = file.name.split('.').pop() || 'bin';
-      const fileName = `${timestamp}-${Math.random().toString(36).substr(2, 9)}.${extension}`;
-      const path = `chats/${chatId}/files/${fileName}`;
-
-      console.log('Dosya yükleme path:', path);
-      return await this.uploadFile(file, path, onProgress);
+      console.log('Firebase Storage dosya yükleme deneniyor...');
+      return await this.uploadFile(file, `chats/${chatId}/files/${Date.now()}-${file.name}`, onProgress);
     } catch (error) {
-      console.error('Dosya yükleme hatası:', error);
-      throw error;
+      console.log('Firebase Storage başarısız, Base64\'e geçiliyor...');
+      return await this.uploadDocumentBase64(file, chatId, userId, onProgress);
     }
   }
 
