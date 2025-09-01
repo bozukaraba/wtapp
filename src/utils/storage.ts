@@ -1,6 +1,3 @@
-import { ref, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
-
 export interface UploadResult {
   url: string;
   path: string;
@@ -52,87 +49,15 @@ export class StorageManager {
     return StorageManager.instance;
   }
 
-  // Dosya yükleme
-  public async uploadFile(
-    file: File, 
-    path: string, 
-    onProgress?: (progress: number) => void
-  ): Promise<UploadResult> {
-    try {
-      console.log('=== DOSYA YÜKLEME BAŞLIYOR ===');
-      console.log('Dosya:', file.name);
-      console.log('Boyut:', file.size, 'bytes');
-      console.log('Tür:', file.type);
-      console.log('Path:', path);
-      
-      // Storage referansı oluştur
-      console.log('Storage referansı oluşturuluyor...');
-      const storageRef = ref(storage, path);
-      console.log('Storage referansı oluşturuldu:', storageRef.fullPath);
-      
-      // CORS sorununu önlemek için uploadBytesResumable kullan
-      console.log('uploadBytesResumable başlatılıyor...');
-      
-      return new Promise((resolve, reject) => {
-        const uploadTask = uploadBytesResumable(storageRef, file);
-        
-        uploadTask.on('state_changed',
-          (snapshot) => {
-            // Progress tracking
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log('Upload progress:', progress + '%');
-            if (onProgress) {
-              onProgress(progress);
-            }
-          },
-          (error) => {
-            console.error('=== DOSYA YÜKLEME HATASI ===');
-            console.error('Hata detayı:', error);
-            console.error('Hata kodu:', error.code);
-            console.error('Hata mesajı:', error.message);
-            reject(new Error(`Dosya yüklenemedi: ${error.message}`));
-          },
-          async () => {
-            try {
-              // Upload completed successfully
-              console.log('Upload tamamlandı, download URL alınıyor...');
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              console.log('Download URL alındı:', downloadURL);
-              
-              const result = {
-                url: downloadURL,
-                path: path,
-                size: file.size
-              };
-              
-              console.log('=== DOSYA YÜKLEME TAMAMLANDI ===');
-              console.log('Sonuç:', result);
-              
-              resolve(result);
-            } catch (urlError) {
-              console.error('Download URL alma hatası:', urlError);
-              reject(new Error(`Download URL alınamadı: ${urlError}`));
-            }
-          }
-        );
-      });
-    } catch (error) {
-      console.error('=== DOSYA YÜKLEME BAŞLATMA HATASI ===');
-      console.error('Hata detayı:', error);
-      throw new Error(`Dosya yükleme başlatılamadı: ${(error as any)?.message || error}`);
-    }
-  }
-
-  // Base64 resim yükleme (CORS sorununu önler)
+  // Base64 resim yükleme (CORS sorununu tamamen önler)
   public async uploadImageBase64(
     file: File, 
-    chatId: string, 
-    userId: string,
+    _chatId: string, 
+    _userId: string,
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
     try {
-      console.log('=== BASE64 RESİM YÜKLEME BAŞLIYOR ===');
-      console.log('Dosya:', file.name, file.size, 'bytes');
+      console.log('Resim Base64 olarak yükleniyor:', file.name, file.size, 'bytes');
 
       if (onProgress) onProgress(10);
 
@@ -154,41 +79,33 @@ export class StorageManager {
         size: file.size
       };
 
-      console.log('=== BASE64 RESİM YÜKLEME TAMAMLANDI ===');
+      console.log('Resim yükleme tamamlandı (Base64)');
       return result;
     } catch (error) {
-      console.error('Base64 resim yükleme hatası:', error);
+      console.error('Resim yükleme hatası:', error);
       throw error;
     }
   }
 
-  // Resim yükleme (Base64 kullanarak CORS sorununu aşma)
+  // Ana resim yükleme metodu - sadece Base64 kullanır
   public async uploadImage(
     file: File, 
     chatId: string, 
     userId: string,
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
-    try {
-      // Doğrudan Base64'e geçiş yapıyoruz, CORS sorunlarını önlemek için
-      console.log('Resim yükleme - doğrudan Base64 kullanılıyor (CORS önlemi)');
-      return await this.uploadImageBase64(file, chatId, userId, onProgress);
-    } catch (error) {
-      console.error('Base64 resim yükleme hatası:', error);
-      throw error;
-    }
+    return await this.uploadImageBase64(file, chatId, userId, onProgress);
   }
 
-  // Base64 dosya yükleme (küçük dosyalar için)
+  // Base64 dosya yükleme
   public async uploadDocumentBase64(
     file: File, 
-    chatId: string, 
-    userId: string,
+    _chatId: string, 
+    _userId: string,
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
     try {
-      console.log('=== BASE64 DOSYA YÜKLEME BAŞLIYOR ===');
-      console.log('Dosya:', file.name, file.size, 'bytes', file.type);
+      console.log('Dosya Base64 olarak yükleniyor:', file.name, file.size, 'bytes', file.type);
 
       if (onProgress) onProgress(10);
 
@@ -210,40 +127,33 @@ export class StorageManager {
         size: file.size
       };
 
-      console.log('=== BASE64 DOSYA YÜKLEME TAMAMLANDI ===');
+      console.log('Dosya yükleme tamamlandı (Base64)');
       return result;
     } catch (error) {
-      console.error('Base64 dosya yükleme hatası:', error);
+      console.error('Dosya yükleme hatası:', error);
       throw error;
     }
   }
 
-  // Dosya yükleme (Base64 kullanarak CORS sorununu aşma)
+  // Ana dosya yükleme metodu - sadece Base64 kullanır
   public async uploadDocument(
     file: File, 
     chatId: string, 
     userId: string,
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
-    try {
-      // Doğrudan Base64'e geçiş yapıyoruz, CORS sorunlarını önlemek için
-      console.log('Dosya yükleme - doğrudan Base64 kullanılıyor (CORS önlemi)');
-      return await this.uploadDocumentBase64(file, chatId, userId, onProgress);
-    } catch (error) {
-      console.error('Base64 dosya yükleme hatası:', error);
-      throw error;
-    }
+    return await this.uploadDocumentBase64(file, chatId, userId, onProgress);
   }
 
-  // Ses kaydı yükleme (Base64 kullanarak CORS sorununu aşma)
+  // Ses kaydı yükleme - Base64 kullanır
   public async uploadAudio(
     audioBlob: Blob, 
-    chatId: string, 
-    userId: string,
-    duration: number
+    _chatId: string, 
+    _userId: string,
+    _duration: number
   ): Promise<UploadResult> {
     try {
-      console.log('Ses kaydı yükleme başlıyor (Base64):', audioBlob.size, 'bytes');
+      console.log('Ses kaydı Base64 olarak yükleniyor:', audioBlob.size, 'bytes');
 
       // Benzersiz dosya adı oluştur
       const timestamp = Date.now();
@@ -263,23 +173,11 @@ export class StorageManager {
         size: file.size
       };
       
-      console.log('Ses kaydı Base64 olarak hazırlandı');
+      console.log('Ses kaydı yükleme tamamlandı (Base64)');
       return result;
     } catch (error) {
       console.error('Ses kaydı yükleme hatası:', error);
       throw error;
-    }
-  }
-
-  // Dosya silme
-  public async deleteFile(path: string): Promise<void> {
-    try {
-      const storageRef = ref(storage, path);
-      await deleteObject(storageRef);
-      console.log('Dosya silindi:', path);
-    } catch (error) {
-      console.error('Dosya silme hatası:', error);
-      throw new Error('Dosya silinemedi');
     }
   }
 
