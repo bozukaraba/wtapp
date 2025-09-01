@@ -1,46 +1,34 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { useAuthStore } from '@/store/authStore';
-import { Phone, Mail } from 'lucide-react';
+import { Mail, UserCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-interface LoginFormProps {
-  onPhoneAuth: (phone: string) => void;
-}
-
-export const LoginForm: React.FC<LoginFormProps> = ({ onPhoneAuth }) => {
-  const [phone, setPhone] = useState('');
+export const LoginForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { signInWithGoogle } = useAuthStore();
-
-  const handlePhoneSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!phone.trim()) {
-      toast.error('Lütfen telefon numaranızı girin');
-      return;
-    }
-
-    // Türkiye formatına çevir
-    let formattedPhone = phone.replace(/\D/g, '');
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = '+90' + formattedPhone.slice(1);
-    } else if (!formattedPhone.startsWith('+')) {
-      formattedPhone = '+90' + formattedPhone;
-    }
-
-    onPhoneAuth(formattedPhone);
-  };
+  const { signInWithGoogle, signInAnonymously } = useAuthStore();
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
       await signInWithGoogle();
-      toast.success('Başarıyla giriş yapıldı!');
+      toast.success('Google ile başarıyla giriş yapıldı!');
     } catch (error) {
       console.error('Google giriş hatası:', error);
-      toast.error('Giriş yapılırken bir hata oluştu');
+      toast.error('Google ile giriş yapılırken bir hata oluştu');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAnonymousSignIn = async () => {
+    try {
+      setIsLoading(true);
+      await signInAnonymously();
+      toast.success('Misafir olarak giriş yapıldı!');
+    } catch (error) {
+      console.error('Anonim giriş hatası:', error);
+      toast.error('Misafir girişi yapılırken bir hata oluştu');
     } finally {
       setIsLoading(false);
     }
@@ -56,13 +44,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onPhoneAuth }) => {
           WTApp'e Hoş Geldiniz
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Hesabınıza giriş yapın veya yeni hesap oluşturun
+          Mesajlaşmaya başlamak için giriş yapın
         </p>
       </div>
 
       {/* Google ile Giriş */}
       <Button
-        variant="secondary"
+        variant="primary"
         size="lg"
         className="w-full mb-4"
         onClick={handleGoogleSignIn}
@@ -100,36 +88,17 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onPhoneAuth }) => {
         </div>
       </div>
 
-      {/* Telefon ile Giriş */}
-      <form onSubmit={handlePhoneSubmit}>
-        <Input
-          type="tel"
-          placeholder="0555 123 45 67"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          leftIcon={<Phone />}
-          label="Telefon Numarası"
-          className="mb-4"
-        />
-
-        {/* Test numaraları bilgilendirmesi */}
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-2">
-            🧪 Test için kullanabileceğiniz numaralar:
-          </p>
-          <div className="text-xs text-blue-600 dark:text-blue-400 space-y-1">
-            <div>• <code>+905551234567</code> (Kod: 123456)</div>
-            <div>• <code>+905559876543</code> (Kod: 123456)</div>
-            <div>• <code>+905551111111</code> (Kod: 123456)</div>
-          </div>
-        </div>
-
-        <Button type="submit" size="lg" className="w-full">
-          SMS Kodu Gönder
-        </Button>
-      </form>
-
-      <div id="recaptcha-container" className="mt-4"></div>
+      {/* Misafir Girişi */}
+      <Button
+        variant="secondary"
+        size="lg"
+        className="w-full"
+        onClick={handleAnonymousSignIn}
+        isLoading={isLoading}
+        leftIcon={<UserCheck className="w-5 h-5" />}
+      >
+        Misafir Olarak Devam Et
+      </Button>
 
       <p className="text-xs text-gray-500 text-center mt-6">
         Devam ederek{' '}

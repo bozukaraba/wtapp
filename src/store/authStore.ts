@@ -4,10 +4,8 @@ import {
   onAuthStateChanged, 
   signInWithPopup, 
   GoogleAuthProvider,
-  signOut as firebaseSignOut,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult
+  signInAnonymously,
+  signOut as firebaseSignOut
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -17,8 +15,7 @@ interface AuthStore extends AuthState {
   // Actions
   initializeAuth: () => void;
   signInWithGoogle: () => Promise<void>;
-  setupPhoneAuth: (phoneNumber: string) => Promise<ConfirmationResult>;
-  verifyPhoneCode: (confirmationResult: ConfirmationResult, code: string) => Promise<void>;
+  signInAnonymously: () => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
   setUserOnline: (online: boolean) => Promise<void>;
@@ -51,10 +48,10 @@ export const useAuthStore = create<AuthStore>()(
                 // İlk kez giriş yapan kullanıcı için profil oluştur
                 const newUser: User = {
                   uid: firebaseUser.uid,
-                  displayName: firebaseUser.displayName || 'Anonim Kullanıcı',
+                  displayName: firebaseUser.displayName || firebaseUser.isAnonymous ? 'Misafir Kullanıcı' : 'Kullanıcı',
                   photoURL: firebaseUser.photoURL || undefined,
-                  phone: firebaseUser.phoneNumber || undefined,
-                  about: 'Mevcut',
+                  phone: undefined,
+                  about: firebaseUser.isAnonymous ? 'Misafir olarak katıldı' : 'Mevcut',
                   lastSeenAt: new Date(),
                   isOnline: true,
                   pushTokens: [],
@@ -102,66 +99,13 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
-      setupPhoneAuth: async (phoneNumber: string) => {
+      signInAnonymously: async () => {
         try {
           set({ isLoading: true });
-          
-          // Test numaraları için özel işlem
-          const testNumbers = ['+905551234567', '+905559876543', '+905551111111'];
-          if (testNumbers.includes(phoneNumber)) {
-            // Test numarası için mock confirmation result
-            const mockConfirmationResult = {
-              confirm: async (code: string) => {
-                if (code === '123456') {
-                  // Mock user credential
-                  return Promise.resolve({
-                    user: {
-                      uid: 'test-user-' + Date.now(),
-                      phoneNumber: phoneNumber,
-                      displayName: 'Test Kullanıcı'
-                    }
-                  });
-                } else {
-                  throw new Error('auth/invalid-verification-code');
-                }
-              }
-            };
-            set({ isLoading: false });
-            return mockConfirmationResult as any;
-          }
-          
-          // Recaptcha verifier oluştur
-          if (!window.recaptchaVerifier) {
-            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-              size: 'invisible',
-              callback: () => {
-                // reCAPTCHA solved
-              }
-            });
-          }
-
-          const confirmationResult = await signInWithPhoneNumber(
-            auth, 
-            phoneNumber, 
-            window.recaptchaVerifier
-          );
-          
-          set({ isLoading: false });
-          return confirmationResult;
-        } catch (error) {
-          console.error('Telefon doğrulama hatası:', error);
-          set({ isLoading: false });
-          throw error;
-        }
-      },
-
-      verifyPhoneCode: async (confirmationResult: ConfirmationResult, code: string) => {
-        try {
-          set({ isLoading: true });
-          await confirmationResult.confirm(code);
+          await signInAnonymously(auth);
           // onAuthStateChanged otomatik olarak tetiklenecek
         } catch (error) {
-          console.error('Kod doğrulama hatası:', error);
+          console.error('Anonim giriş hatası:', error);
           set({ isLoading: false });
           throw error;
         }
@@ -238,9 +182,4 @@ export const useAuthStore = create<AuthStore>()(
   )
 );
 
-// Global window type declaration
-declare global {
-  interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
-  }
-}
+
