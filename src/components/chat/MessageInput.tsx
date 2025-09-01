@@ -7,6 +7,7 @@ import { useDropzone } from 'react-dropzone';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
+import { storageManager } from '@/utils/storage';
 
 interface MessageInputProps {
   chatId: string;
@@ -83,52 +84,48 @@ export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
 
     const file = acceptedFiles[0];
     
-    // File size check (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Dosya boyutu 10MB\'dan küçük olmalıdır');
-      return;
-    }
-
     try {
       setIsUploading(true);
       
       const isImage = file.type.startsWith('image/');
-      
-      // Şimdilik base64 ile encode et (geçici çözüm)
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const base64Data = e.target?.result as string;
-          
-          await sendMessage(chatId, {
-            chatId,
-            from: user.uid,
-            type: isImage ? 'image' : 'file',
-            fileName: file.name,
-            fileSize: file.size,
-            mediaType: file.type,
-            mediaURL: base64Data, // Base64 data URL
-            text: isImage ? undefined : `📎 ${file.name}`
-          });
+      let uploadResult;
 
-          toast.success(isImage ? 'Resim gönderildi' : 'Dosya gönderildi');
-        } catch (error) {
-          console.error('Mesaj gönderme hatası:', error);
-          toast.error('Dosya gönderilemedi');
-        } finally {
-          setIsUploading(false);
-        }
-      };
+      if (isImage) {
+        // Resim yükleme
+        uploadResult = await storageManager.uploadImage(file, chatId, user.uid);
+        
+        await sendMessage(chatId, {
+          chatId,
+          from: user.uid,
+          type: 'image',
+          fileName: file.name,
+          fileSize: file.size,
+          mediaType: file.type,
+          mediaURL: uploadResult.url
+        });
 
-      reader.onerror = () => {
-        toast.error('Dosya okunamadı');
-        setIsUploading(false);
-      };
+        toast.success('Resim gönderildi');
+      } else {
+        // Dosya yükleme
+        uploadResult = await storageManager.uploadDocument(file, chatId, user.uid);
+        
+        await sendMessage(chatId, {
+          chatId,
+          from: user.uid,
+          type: 'file',
+          fileName: file.name,
+          fileSize: file.size,
+          mediaType: file.type,
+          mediaURL: uploadResult.url,
+          text: `📎 ${file.name}`
+        });
 
-      reader.readAsDataURL(file);
-    } catch (error) {
+        toast.success('Dosya gönderildi');
+      }
+    } catch (error: any) {
       console.error('Dosya yükleme hatası:', error);
-      toast.error('Dosya gönderilemedi');
+      toast.error(error.message || 'Dosya gönderilemedi');
+    } finally {
       setIsUploading(false);
     }
   }, [chatId, user, sendMessage]);
@@ -314,6 +311,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
           const files = Array.from(e.target.files || []);
           if (files.length > 0) {
             onDrop(files);
+            // Input'u temizle
+            e.target.value = '';
           }
         }}
       />
