@@ -24,13 +24,15 @@ export const UsernameChat: React.FC = () => {
       setIsSearching(true);
       setFoundUser(null);
       
-      const user = await findUserByUsername(searchUsername.trim());
+      console.log('Aranan username:', searchUsername.trim());
+      const foundUserData = await findUserByUsername(searchUsername.trim());
+      console.log('Bulunan kullanıcı:', foundUserData);
       
-      if (user) {
-        setFoundUser(user);
+      if (foundUserData) {
+        setFoundUser(foundUserData);
         toast.success('Kullanıcı bulundu!');
       } else {
-        toast.error('Kullanıcı bulunamadı');
+        toast.error('Bu kullanıcı adı ile kayıtlı kullanıcı bulunamadı');
       }
     } catch (error) {
       console.error('Kullanıcı arama hatası:', error);
