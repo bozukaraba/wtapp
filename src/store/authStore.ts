@@ -29,7 +29,14 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
 
       initializeAuth: () => {
+        // Timeout ekle - 10 saniye sonra loading'i kapat
+        const timeoutId = setTimeout(() => {
+          console.log('Auth timeout, setting loading to false');
+          set({ isLoading: false });
+        }, 10000);
+
         onAuthStateChanged(auth, async (firebaseUser) => {
+          clearTimeout(timeoutId); // Timeout'u iptal et
           if (firebaseUser) {
             console.log('Firebase user:', firebaseUser);
             console.log('Is anonymous:', firebaseUser.isAnonymous);
@@ -62,12 +69,23 @@ export const useAuthStore = create<AuthStore>()(
                   updatedAt: new Date()
                 };
 
-                await setDoc(doc(db, 'users', firebaseUser.uid), {
-                  ...newUser,
-                  createdAt: serverTimestamp(),
-                  updatedAt: serverTimestamp(),
-                  lastSeenAt: serverTimestamp()
-                });
+                // Anonymous kullanıcılar için Firestore'a yazma işlemini atla
+                if (!firebaseUser.isAnonymous) {
+                  try {
+                    await setDoc(doc(db, 'users', firebaseUser.uid), {
+                      ...newUser,
+                      createdAt: serverTimestamp(),
+                      updatedAt: serverTimestamp(),
+                      lastSeenAt: serverTimestamp()
+                    });
+                    console.log('New user saved to Firestore:', newUser);
+                  } catch (error) {
+                    console.error('Firestore yazma hatası:', error);
+                    // Firestore hatası olsa bile devam et
+                  }
+                } else {
+                  console.log('Anonymous user, skipping Firestore save');
+                }
 
                 console.log('New user created:', newUser);
                 set({ 
@@ -160,6 +178,19 @@ export const useAuthStore = create<AuthStore>()(
         const { user } = get();
         if (!user) return;
 
+        // Anonymous kullanıcılar için Firestore güncellemesi yapma
+        if (user.displayName === 'Misafir Kullanıcı') {
+          console.log('Anonymous user, skipping online status update');
+          set({ 
+            user: { 
+              ...user, 
+              isOnline: online, 
+              lastSeenAt: new Date() 
+            } 
+          });
+          return;
+        }
+
         try {
           await updateDoc(doc(db, 'users', user.uid), {
             isOnline: online,
@@ -175,6 +206,14 @@ export const useAuthStore = create<AuthStore>()(
           });
         } catch (error) {
           console.error('Online durum güncelleme hatası:', error);
+          // Hata olsa bile local state'i güncelle
+          set({ 
+            user: { 
+              ...user, 
+              isOnline: online, 
+              lastSeenAt: new Date() 
+            } 
+          });
         }
       }
     }),
