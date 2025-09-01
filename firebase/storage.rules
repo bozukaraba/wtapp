@@ -1,0 +1,50 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthed() {
+      return request.auth != null;
+    }
+    
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+    
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*') &&
+        request.resource.size < 5 * 1024 * 1024; // 5MB limit
+    }
+    
+    function isValidFile() {
+      return request.resource.size < 10 * 1024 * 1024; // 10MB limit
+    }
+
+    // Profile photos
+    match /users/{uid}/profile/{fileName} {
+      allow read: if isAuthed();
+      allow write: if isOwner(uid) && isValidImage();
+      allow delete: if isOwner(uid);
+    }
+
+    // Chat media (images, files, audio)
+    match /chats/{chatId}/media/{fileName} {
+      allow read: if isAuthed(); // TODO: Check if user is member of chat
+      allow write: if isAuthed() && (isValidImage() || isValidFile());
+      allow delete: if false; // Media files can't be deleted
+    }
+
+    // Audio messages
+    match /chats/{chatId}/audio/{fileName} {
+      allow read: if isAuthed(); // TODO: Check if user is member of chat
+      allow write: if isAuthed() && 
+        request.resource.contentType.matches('audio/.*') &&
+        request.resource.size < 5 * 1024 * 1024; // 5MB limit for audio
+      allow delete: if false;
+    }
+
+    // Deny all other requests
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
