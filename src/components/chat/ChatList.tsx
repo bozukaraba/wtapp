@@ -16,9 +16,12 @@ export const ChatList: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
+    console.log('ChatList: Kullanıcı için chat subscription başlatılıyor:', user.uid);
     const unsubscribe = subscribeToChats(user.uid);
     return unsubscribe;
   }, [user, subscribeToChats]);
+
+  console.log('ChatList render edildi, chat sayısı:', chats.length);
 
   const getChatName = (chat: Chat) => {
     if (chat.type === 'group') {

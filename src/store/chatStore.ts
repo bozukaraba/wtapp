@@ -10,6 +10,7 @@ import {
   updateDoc, 
   doc, 
   getDoc,
+  setDoc,
   serverTimestamp,
   getDocs,
   startAfter,
@@ -266,24 +267,31 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   setTyping: async (chatId: string, userId: string, isTyping: boolean) => {
     try {
       const typingRef = doc(db, 'typing', chatId, 'users', userId);
+      
+      const typingData = {
+        userId,
+        chatId,
+        isTyping,
+        updatedAt: serverTimestamp()
+      };
+      
       if (isTyping) {
-        await updateDoc(typingRef, {
-          isTyping: true,
-          updatedAt: serverTimestamp()
-        });
+        await setDoc(typingRef, typingData);
         
         // 3 saniye sonra otomatik olarak false yap
         setTimeout(async () => {
-          await updateDoc(typingRef, {
-            isTyping: false,
-            updatedAt: serverTimestamp()
-          });
+          try {
+            await setDoc(typingRef, {
+              ...typingData,
+              isTyping: false,
+              updatedAt: serverTimestamp()
+            });
+          } catch (error) {
+            console.error('Auto typing false hatası:', error);
+          }
         }, 3000);
       } else {
-        await updateDoc(typingRef, {
-          isTyping: false,
-          updatedAt: serverTimestamp()
-        });
+        await setDoc(typingRef, typingData);
       }
     } catch (error) {
       console.error('Typing durumu güncelleme hatası:', error);

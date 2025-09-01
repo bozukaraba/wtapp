@@ -92,25 +92,43 @@ export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
     try {
       setIsUploading(true);
       
-      // TODO: Firebase Storage'a yükle
-      // Şimdilik placeholder
       const isImage = file.type.startsWith('image/');
       
-      await sendMessage(chatId, {
-        chatId,
-        from: user.uid,
-        type: isImage ? 'image' : 'file',
-        fileName: file.name,
-        fileSize: file.size,
-        mediaType: file.type,
-        // mediaURL: uploadedURL - Firebase Storage entegrasyonu gerekli
-      });
+      // Şimdilik base64 ile encode et (geçici çözüm)
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const base64Data = e.target?.result as string;
+          
+          await sendMessage(chatId, {
+            chatId,
+            from: user.uid,
+            type: isImage ? 'image' : 'file',
+            fileName: file.name,
+            fileSize: file.size,
+            mediaType: file.type,
+            mediaURL: base64Data, // Base64 data URL
+            text: isImage ? undefined : `📎 ${file.name}`
+          });
 
-      toast.success('Dosya gönderildi');
+          toast.success(isImage ? 'Resim gönderildi' : 'Dosya gönderildi');
+        } catch (error) {
+          console.error('Mesaj gönderme hatası:', error);
+          toast.error('Dosya gönderilemedi');
+        } finally {
+          setIsUploading(false);
+        }
+      };
+
+      reader.onerror = () => {
+        toast.error('Dosya okunamadı');
+        setIsUploading(false);
+      };
+
+      reader.readAsDataURL(file);
     } catch (error) {
       console.error('Dosya yükleme hatası:', error);
       toast.error('Dosya gönderilemedi');
-    } finally {
       setIsUploading(false);
     }
   }, [chatId, user, sendMessage]);

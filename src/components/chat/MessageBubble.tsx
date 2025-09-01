@@ -56,8 +56,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             <img
               src={message.mediaURL}
               alt="Gönderilen resim"
-              className="max-w-xs rounded-lg"
+              className="max-w-xs max-h-64 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
               loading="lazy"
+              onClick={() => {
+                // Resmi büyük boyutta göster
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+                modal.onclick = () => modal.remove();
+                
+                const img = document.createElement('img');
+                img.src = message.mediaURL || '';
+                img.className = 'max-w-full max-h-full object-contain rounded-lg';
+                
+                modal.appendChild(img);
+                document.body.appendChild(modal);
+              }}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = '/broken-image.png'; // Placeholder için
+                target.alt = 'Resim yüklenemedi';
+                target.className = 'max-w-xs rounded-lg bg-gray-200 dark:bg-gray-700 p-4 text-gray-500 text-center';
+              }}
             />
             {message.text && (
               <p className="mt-2 whitespace-pre-wrap break-words">
