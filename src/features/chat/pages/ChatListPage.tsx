@@ -28,8 +28,8 @@ export const ChatListPage: React.FC = () => {
   const { theme, toggleTheme } = useUIStore();
 
   const handleNewChat = () => {
-    // TODO: Yeni chat modal'ı aç
-    console.log('Yeni chat');
+    // Keşif sayfasına yönlendir
+    navigate('/discover');
   };
 
   const handleNewGroup = () => {
@@ -72,7 +72,7 @@ export const ChatListPage: React.FC = () => {
             onClick={handleNewChat}
           >
             <UserPlus className="w-5 h-5 mr-3" />
-            Yeni Sohbet
+            Kullanıcı Keşfet
           </Button>
           
           <Button
@@ -151,7 +151,7 @@ export const ChatListPage: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={handleNewChat}
-                  title="Yeni Sohbet"
+                  title="Kullanıcı Keşfet"
                 >
                   <UserPlus className="w-5 h-5" />
                 </Button>

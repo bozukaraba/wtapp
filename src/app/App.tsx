@@ -7,6 +7,7 @@ import { Toaster } from 'react-hot-toast';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { ChatListPage } from '@/features/chat/pages/ChatListPage';
 import { ChatPage } from '@/features/chat/pages/ChatPage';
+import { DiscoverPage } from '@/features/chat/pages/DiscoverPage';
 import { SettingsPage } from '@/features/auth/pages/SettingsPage';
 
 // Stores
@@ -69,13 +70,14 @@ function App() {
                 } 
               />
 
-              {/* Protected Routes */}
-              <Route path="/" element={<ProtectedRoute />}>
-                <Route index element={<Navigate to="/chats" replace />} />
-                <Route path="chats" element={<ChatListPage />} />
-                <Route path="chats/:chatId" element={<ChatPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-              </Route>
+                          {/* Protected Routes */}
+            <Route path="/" element={<ProtectedRoute />}>
+              <Route index element={<Navigate to="/chats" replace />} />
+              <Route path="chats" element={<ChatListPage />} />
+              <Route path="chats/:chatId" element={<ChatPage />} />
+              <Route path="discover" element={<DiscoverPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

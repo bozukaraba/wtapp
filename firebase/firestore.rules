@@ -63,6 +63,33 @@ service cloud.firestore {
       allow write: if isOwner(uid) && isMember(chatId);
     }
 
+    // User discovery
+    match /discovery/{docId} {
+      allow read: if isAuthed();
+      allow create: if isAuthed() && 
+        request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthed() && 
+        resource.data.userId == request.auth.uid;
+      allow delete: if isAuthed() && 
+        resource.data.userId == request.auth.uid;
+    }
+
+    // Connection requests
+    match /connectionRequests/{requestId} {
+      allow read: if isAuthed() && (
+        resource.data.from == request.auth.uid || 
+        resource.data.to == request.auth.uid
+      );
+      allow create: if isAuthed() && 
+        request.resource.data.from == request.auth.uid;
+      allow update: if isAuthed() && 
+        resource.data.to == request.auth.uid;
+      allow delete: if isAuthed() && (
+        resource.data.from == request.auth.uid || 
+        resource.data.to == request.auth.uid
+      );
+    }
+
     // Helper function to check if only specific fields are being updated
     function onlyUpdating(fields) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
