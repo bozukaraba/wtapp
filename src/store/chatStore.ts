@@ -101,7 +101,9 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   },
 
   subscribeToMessages: (chatId: string) => {
-    console.log('Mesajları dinlemeye başlıyor:', chatId);
+    console.log('=== MESAJLARI DİNLEMEYE BAŞLIYOR ===');
+    console.log('ChatID:', chatId);
+    console.log('Firestore path:', `messages/${chatId}/items`);
     
     const q = query(
       collection(db, 'messages', chatId, 'items'),
@@ -110,7 +112,10 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     );
 
     return onSnapshot(q, (snapshot) => {
-      console.log('Mesaj snapshot alındı:', snapshot.size, 'mesaj');
+      console.log('=== MESAJ SNAPSHOT ALINDI ===');
+      console.log('Snapshot size:', snapshot.size);
+      console.log('Snapshot empty:', snapshot.empty);
+      console.log('Snapshot metadata:', snapshot.metadata);
       
       const messages: Message[] = [];
       let lastVisible: QueryDocumentSnapshot<DocumentData> | null = null;
@@ -199,6 +204,11 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
         }
       });
 
+      console.log('=== STATE GÜNCELLENİYOR ===');
+      console.log('ChatID:', chatId);
+      console.log('Sorted messages count:', sortedMessages.length);
+      console.log('Current state messages keys:', Object.keys(get().messages));
+      
       set((state) => ({
         messages: {
           ...state.messages,
@@ -207,6 +217,10 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
         lastVisible,
         hasMore: messages.length === 50
       }));
+      
+      console.log('=== STATE GÜNCELLENDİ ===');
+      console.log('New state messages keys:', Object.keys(get().messages));
+      console.log('New messages for chatId:', get().messages[chatId]?.length || 0);
     }, (error) => {
       console.error('Mesaj dinleme hatası:', error);
     });

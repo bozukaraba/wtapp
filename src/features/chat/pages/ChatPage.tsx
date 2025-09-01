@@ -75,11 +75,14 @@ export const ChatPage: React.FC = () => {
     if (chatId) {
       console.log('=== CHATPAGE MESAJ DURUMU ===');
       console.log('ChatID:', chatId);
+      console.log('Messages object keys:', Object.keys(messages));
       console.log('Messages object:', messages);
       console.log('Chat messages array:', messages[chatId] || []);
       console.log('Message count:', (messages[chatId] || []).length);
+      console.log('Active chat:', activeChat);
+      console.log('User:', user);
     }
-  }, [chatId, messages]);
+  }, [chatId, messages, activeChat, user]);
 
   const getChatName = () => {
     if (!activeChat) return 'Yükleniyor...';
