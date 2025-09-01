@@ -1,4 +1,4 @@
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject, uploadBytesResumable } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
 
 export interface UploadResult {
@@ -35,34 +35,58 @@ export class StorageManager {
       // Storage referansı oluştur
       console.log('Storage referansı oluşturuluyor...');
       const storageRef = ref(storage, path);
-      console.log('Storage referansı oluşturuldu:', storageRef);
+      console.log('Storage referansı oluşturuldu:', storageRef.fullPath);
       
-      // Dosyayı yükle
-      console.log('uploadBytes başlatılıyor...');
-      const snapshot = await uploadBytes(storageRef, file);
-      console.log('uploadBytes tamamlandı:', snapshot.metadata);
+      // CORS sorununu önlemek için uploadBytesResumable kullan
+      console.log('uploadBytesResumable başlatılıyor...');
       
-      // Download URL'ini al
-      console.log('getDownloadURL başlatılıyor...');
-      const downloadURL = await getDownloadURL(storageRef);
-      console.log('Download URL alındı:', downloadURL);
-      
-      const result = {
-        url: downloadURL,
-        path: path,
-        size: file.size
-      };
-      
-      console.log('=== DOSYA YÜKLEME TAMAMLANDI ===');
-      console.log('Sonuç:', result);
-      
-      return result;
+      return new Promise((resolve, reject) => {
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        
+        uploadTask.on('state_changed',
+          (snapshot) => {
+            // Progress tracking
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log('Upload progress:', progress + '%');
+            if (onProgress) {
+              onProgress(progress);
+            }
+          },
+          (error) => {
+            console.error('=== DOSYA YÜKLEME HATASI ===');
+            console.error('Hata detayı:', error);
+            console.error('Hata kodu:', error.code);
+            console.error('Hata mesajı:', error.message);
+            reject(new Error(`Dosya yüklenemedi: ${error.message}`));
+          },
+          async () => {
+            try {
+              // Upload completed successfully
+              console.log('Upload tamamlandı, download URL alınıyor...');
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              console.log('Download URL alındı:', downloadURL);
+              
+              const result = {
+                url: downloadURL,
+                path: path,
+                size: file.size
+              };
+              
+              console.log('=== DOSYA YÜKLEME TAMAMLANDI ===');
+              console.log('Sonuç:', result);
+              
+              resolve(result);
+            } catch (urlError) {
+              console.error('Download URL alma hatası:', urlError);
+              reject(new Error(`Download URL alınamadı: ${urlError}`));
+            }
+          }
+        );
+      });
     } catch (error) {
-      console.error('=== DOSYA YÜKLEME HATASI ===');
+      console.error('=== DOSYA YÜKLEME BAŞLATMA HATASI ===');
       console.error('Hata detayı:', error);
-      console.error('Hata kodu:', (error as any)?.code);
-      console.error('Hata mesajı:', (error as any)?.message);
-      throw new Error(`Dosya yüklenemedi: ${(error as any)?.message || error}`);
+      throw new Error(`Dosya yükleme başlatılamadı: ${(error as any)?.message || error}`);
     }
   }
 

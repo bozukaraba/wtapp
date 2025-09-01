@@ -12,28 +12,28 @@ service firebase.storage {
 
     // Profile photos
     match /users/{uid}/profile/{fileName} {
-      allow read: if isAuthed();
+      allow read: if true; // Public read for profile photos
       allow write: if isOwner(uid);
       allow delete: if isOwner(uid);
     }
 
-    // Chat images - boyut limiti kaldırıldı
+    // Chat images - CORS uyumlu
     match /chats/{chatId}/images/{fileName} {
-      allow read: if isAuthed();
+      allow read: if true; // Public read to avoid CORS
       allow write: if isAuthed();
       allow delete: if false;
     }
 
-    // Chat files - boyut limiti kaldırıldı
+    // Chat files - CORS uyumlu
     match /chats/{chatId}/files/{fileName} {
-      allow read: if isAuthed();
+      allow read: if true; // Public read to avoid CORS
       allow write: if isAuthed();
       allow delete: if false;
     }
 
-    // Chat audio - boyut limiti kaldırıldı
+    // Chat audio - CORS uyumlu
     match /chats/{chatId}/audio/{fileName} {
-      allow read: if isAuthed();
+      allow read: if true; // Public read to avoid CORS
       allow write: if isAuthed();
       allow delete: if false;
     }

@@ -20,7 +20,9 @@ export const app = initializeApp(firebaseConfig);
 // Firebase servislerini export et
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+
+// Storage için custom bucket kullan
+export const storage = getStorage(app, "gs://wtapp-9cc5a.firebasestorage.app");
 
 // FCM - sadece destekleniyorsa
 let messaging: any = null;
