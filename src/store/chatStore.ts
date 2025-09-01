@@ -221,26 +221,62 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
 
   sendMessage: async (chatId: string, messageData: Omit<Message, 'id' | 'createdAt' | 'deliveredTo' | 'readBy'>) => {
     try {
-      const message = {
-        ...messageData,
+      console.log('Mesaj gönderiliyor:', messageData);
+      
+      // Undefined değerleri temizle
+      const cleanMessageData: any = {
+        chatId: messageData.chatId,
+        from: messageData.from,
+        type: messageData.type,
         createdAt: serverTimestamp(),
         deliveredTo: [],
         readBy: []
       };
 
+      // Sadece tanımlı alanları ekle
+      if (messageData.text !== undefined && messageData.text !== null) {
+        cleanMessageData.text = messageData.text;
+      }
+      if (messageData.mediaURL !== undefined && messageData.mediaURL !== null) {
+        cleanMessageData.mediaURL = messageData.mediaURL;
+      }
+      if (messageData.mediaType !== undefined && messageData.mediaType !== null) {
+        cleanMessageData.mediaType = messageData.mediaType;
+      }
+      if (messageData.fileName !== undefined && messageData.fileName !== null) {
+        cleanMessageData.fileName = messageData.fileName;
+      }
+      if (messageData.fileSize !== undefined && messageData.fileSize !== null) {
+        cleanMessageData.fileSize = messageData.fileSize;
+      }
+      if (messageData.replyTo !== undefined && messageData.replyTo !== null) {
+        cleanMessageData.replyTo = messageData.replyTo;
+      }
+      if (messageData.duration !== undefined && messageData.duration !== null) {
+        cleanMessageData.duration = messageData.duration;
+      }
+
+      console.log('Temizlenmiş mesaj verisi:', cleanMessageData);
+
       // Mesajı ekle
-      const docRef = await addDoc(collection(db, 'messages', chatId, 'items'), message);
+      const docRef = await addDoc(collection(db, 'messages', chatId, 'items'), cleanMessageData);
+      console.log('Mesaj eklendi, ID:', docRef.id);
 
       // Chat'in son mesajını güncelle
+      const lastMessageData = {
+        id: docRef.id,
+        text: messageData.text || (messageData.type === 'image' ? '🖼️ Resim' : 
+              messageData.type === 'file' ? '📎 Dosya' : 
+              messageData.type === 'audio' ? '🎤 Ses kaydı' : 'Medya'),
+        from: messageData.from,
+        createdAt: serverTimestamp(),
+        type: messageData.type
+      };
+
       await updateDoc(doc(db, 'chats', chatId), {
-        lastMessage: {
-          id: docRef.id,
-          text: messageData.text || 'Medya',
-          from: messageData.from,
-          createdAt: serverTimestamp(),
-          type: messageData.type
-        }
+        lastMessage: lastMessageData
       });
+      console.log('Chat son mesajı güncellendi');
 
       // Typing durumunu temizle
       await get().setTyping(chatId, messageData.from, false);

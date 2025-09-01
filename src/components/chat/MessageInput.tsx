@@ -101,7 +101,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
           fileName: file.name,
           fileSize: file.size,
           mediaType: file.type,
-          mediaURL: uploadResult.url
+          mediaURL: uploadResult.url,
+          text: '🖼️ Resim' // Undefined yerine varsayılan metin
         });
 
         toast.success('Resim gönderildi');
