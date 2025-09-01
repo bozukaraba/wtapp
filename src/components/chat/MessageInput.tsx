@@ -51,14 +51,20 @@ export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
   // Send message
   const handleSendMessage = async () => {
     if (!message.trim() || !user) {
-      console.log('Mesaj gönderme engellendi:', { message: message.trim(), user: !!user });
+      console.log('Mesaj gönderme engellendi:', { 
+        messageEmpty: !message.trim(), 
+        userMissing: !user,
+        message: message.trim(),
+        user: user?.uid 
+      });
       return;
     }
 
-    console.log('=== MESAJ GÖNDERME BAŞLIYOR ===');
+    console.log('=== MESSAGE INPUT - MESAJ GÖNDERME BAŞLIYOR ===');
     console.log('ChatID:', chatId);
-    console.log('User:', user.uid);
-    console.log('Message:', message.trim());
+    console.log('User UID:', user.uid);
+    console.log('Message text:', message.trim());
+    console.log('Message length:', message.trim().length);
 
     const messageToSend = message.trim();
 
@@ -69,22 +75,29 @@ export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
         textareaRef.current.style.height = 'auto';
       }
 
-      console.log('Mesaj gönderiliyor...');
-      await sendMessage(chatId, {
+      console.log('sendMessage fonksiyonu çağrılıyor...');
+      const messageData = {
         chatId,
         from: user.uid,
-        type: 'text',
+        type: 'text' as const,
         text: messageToSend
-      });
+      };
+      console.log('Gönderilecek mesaj verisi:', messageData);
+      
+      await sendMessage(chatId, messageData);
 
-      console.log('=== MESAJ BAŞARIYLA GÖNDERİLDİ ===');
+      console.log('=== MESSAGE INPUT - MESAJ BAŞARIYLA GÖNDERİLDİ ===');
+      toast.success('Mesaj gönderildi');
     } catch (error) {
-      console.error('=== MESAJ GÖNDERME HATASI ===');
-      console.error('Hata:', error);
+      console.error('=== MESSAGE INPUT - MESAJ GÖNDERME HATASI ===');
+      console.error('Hata türü:', typeof error);
+      console.error('Hata mesajı:', (error as any)?.message);
+      console.error('Hata kodu:', (error as any)?.code);
+      console.error('Tam hata:', error);
       
       // Hata durumunda mesajı geri yükle
       setMessage(messageToSend);
-      toast.error('Mesaj gönderilemedi');
+      toast.error('Mesaj gönderilemedi: ' + ((error as any)?.message || 'Bilinmeyen hata'));
     }
   };
 
