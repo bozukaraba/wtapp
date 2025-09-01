@@ -133,7 +133,7 @@ export const useVideoCallStore = create<VideoCallState>()((set, get) => ({
           await setDoc(doc(db, 'iceCandidates', candidateId), {
             callId,
             candidate: event.candidate.toJSON(),
-            from: currentUser.uid
+            from: currentUser.uid,
             createdAt: serverTimestamp()
           });
         }
@@ -209,7 +209,7 @@ export const useVideoCallStore = create<VideoCallState>()((set, get) => ({
           await setDoc(doc(db, 'iceCandidates', candidateId), {
             callId,
             candidate: event.candidate.toJSON(),
-            from: currentUser.uid
+            from: currentUser.uid,
             createdAt: serverTimestamp()
           });
         }
