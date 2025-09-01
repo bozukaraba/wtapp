@@ -70,6 +70,17 @@ export const ChatPage: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages[chatId || '']]);
 
+  // Debug: Mesaj durumunu loglayalım
+  useEffect(() => {
+    if (chatId) {
+      console.log('=== CHATPAGE MESAJ DURUMU ===');
+      console.log('ChatID:', chatId);
+      console.log('Messages object:', messages);
+      console.log('Chat messages array:', messages[chatId] || []);
+      console.log('Message count:', (messages[chatId] || []).length);
+    }
+  }, [chatId, messages]);
+
   const getChatName = () => {
     if (!activeChat) return 'Yükleniyor...';
     
@@ -251,23 +262,38 @@ export const ChatPage: React.FC = () => {
             </Button>
           </div>
 
-          {/* Messages */}
-          {chatMessages.map((message, index) => {
-            const isOwn = message.from === user?.uid;
-            const prevMessage = chatMessages[index - 1];
-            const showAvatar = activeChat?.type === 'group' && 
-              (!prevMessage || prevMessage.from !== message.from);
+          {/* Messages - Mesaj listesi */}
+          {chatMessages.length === 0 ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Henüz mesaj yok, konuşmaya başlayın!
+                </p>
+              </div>
+            </div>
+          ) : (
+            chatMessages.map((message, index) => {
+              const isOwn = message.from === user?.uid;
+              const prevMessage = chatMessages[index - 1];
+              const showAvatar = activeChat?.type === 'group' && 
+                (!prevMessage || prevMessage.from !== message.from);
 
-            return (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                isOwn={isOwn}
-                showAvatar={showAvatar}
-                senderName={showAvatar ? `Kullanıcı ${message.from.slice(-4)}` : undefined}
-              />
-            );
-          })}
+              return (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  isOwn={isOwn}
+                  showAvatar={showAvatar}
+                  senderName={showAvatar ? `Kullanıcı ${message.from.slice(-4)}` : undefined}
+                />
+              );
+            })
+          )}
 
           {/* Typing indicator */}
           {renderTypingIndicator()}

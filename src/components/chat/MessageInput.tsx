@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useChatStore } from '@/store/chatStore';
 import { useAuthStore } from '@/store/authStore';
-import { Send, Paperclip, Mic, Image, Smile } from 'lucide-react';
+import { Send, Paperclip, Mic, Smile } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import toast from 'react-hot-toast';
@@ -50,22 +50,40 @@ export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
 
   // Send message
   const handleSendMessage = async () => {
-    if (!message.trim() || !user) return;
+    if (!message.trim() || !user) {
+      console.log('Mesaj gönderme engellendi:', { message: message.trim(), user: !!user });
+      return;
+    }
+
+    console.log('=== MESAJ GÖNDERME BAŞLIYOR ===');
+    console.log('ChatID:', chatId);
+    console.log('User:', user.uid);
+    console.log('Message:', message.trim());
+
+    const messageToSend = message.trim();
 
     try {
-      await sendMessage(chatId, {
-        chatId,
-        from: user.uid,
-        type: 'text',
-        text: message.trim()
-      });
-
+      // Önce mesaj inputunu temizle
       setMessage('');
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
       }
+
+      console.log('Mesaj gönderiliyor...');
+      await sendMessage(chatId, {
+        chatId,
+        from: user.uid,
+        type: 'text',
+        text: messageToSend
+      });
+
+      console.log('=== MESAJ BAŞARIYLA GÖNDERİLDİ ===');
     } catch (error) {
-      console.error('Mesaj gönderme hatası:', error);
+      console.error('=== MESAJ GÖNDERME HATASI ===');
+      console.error('Hata:', error);
+      
+      // Hata durumunda mesajı geri yükle
+      setMessage(messageToSend);
       toast.error('Mesaj gönderilemedi');
     }
   };
@@ -219,7 +237,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
         <div className="absolute bottom-20 right-4 z-20">
           <EmojiPicker
             onEmojiClick={handleEmojiClick}
-            theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+            theme={document.documentElement.classList.contains('dark') ? 'dark' as any : 'light' as any}
           />
         </div>
       )}

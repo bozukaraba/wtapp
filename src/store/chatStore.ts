@@ -173,7 +173,6 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
           if (document.visibilityState !== 'visible') {
             try {
               // Gönderen kullanıcının bilgilerini al
-              const { getUserById } = await import('@/store/authStore');
               const { useAuthStore } = await import('@/store/authStore');
               const sender = await useAuthStore.getState().getUserById(message.from);
               
@@ -236,7 +235,9 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
 
   sendMessage: async (chatId: string, messageData: Omit<Message, 'id' | 'createdAt' | 'deliveredTo' | 'readBy'>) => {
     try {
-      console.log('Mesaj gönderiliyor:', messageData);
+      console.log('=== CHATSTORE SEND MESSAGE BAŞLIYOR ===');
+      console.log('ChatID:', chatId);
+      console.log('Mesaj verisi:', messageData);
       
       // Undefined değerleri temizle
       const cleanMessageData: any = {
@@ -273,11 +274,13 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
 
       console.log('Temizlenmiş mesaj verisi:', cleanMessageData);
 
-      // Mesajı ekle
+      // Mesajı Firestore'a ekle
+      console.log('Firestore\'a mesaj ekleniyor...');
       const docRef = await addDoc(collection(db, 'messages', chatId, 'items'), cleanMessageData);
-      console.log('Mesaj eklendi, ID:', docRef.id);
+      console.log('Mesaj Firestore\'a eklendi, ID:', docRef.id);
 
       // Chat'in son mesajını güncelle
+      console.log('Chat son mesajı güncelleniyor...');
       const lastMessageData = {
         id: docRef.id,
         text: messageData.text || (messageData.type === 'image' ? '🖼️ Resim' : 
@@ -294,9 +297,16 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       console.log('Chat son mesajı güncellendi');
 
       // Typing durumunu temizle
+      console.log('Typing durumu temizleniyor...');
       await get().setTyping(chatId, messageData.from, false);
+      
+      console.log('=== MESAJ GÖNDERME TAMAMLANDI ===');
     } catch (error) {
-      console.error('Mesaj gönderme hatası:', error);
+      console.error('=== CHATSTORE MESAJ GÖNDERME HATASI ===');
+      console.error('Hata detayı:', error);
+      console.error('Hata türü:', typeof error);
+      console.error('Hata message:', (error as any)?.message);
+      console.error('Hata code:', (error as any)?.code);
       throw error;
     }
   },
@@ -497,7 +507,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     }
   },
 
-  calculateUnreadCount: (chatId: string, userId: string) => {
+  calculateUnreadCount: (chatId: string, _userId: string) => {
     const state = get();
     return state.unreadCounts[chatId] || 0;
   },
