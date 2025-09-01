@@ -72,7 +72,7 @@ export const ChatListPage: React.FC = () => {
             onClick={handleNewChat}
           >
             <UserPlus className="w-5 h-5 mr-3" />
-            Kullanıcı Keşfet
+            Sohbet Başlat
           </Button>
           
           <Button
@@ -151,7 +151,7 @@ export const ChatListPage: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={handleNewChat}
-                  title="Kullanıcı Keşfet"
+                  title="Sohbet Başlat"
                 >
                   <UserPlus className="w-5 h-5" />
                 </Button>

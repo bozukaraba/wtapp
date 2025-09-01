@@ -20,7 +20,7 @@ export const DiscoverPage: React.FC = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Kullanıcı Keşfi
+            Sohbet Başlat
           </h1>
         </div>
       </div>
