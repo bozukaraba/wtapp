@@ -50,7 +50,7 @@ export class StorageManager {
     }
   }
 
-  // Resim yükleme (optimizasyon ile)
+  // Resim yükleme (boyut limiti kaldırıldı)
   public async uploadImage(
     file: File, 
     chatId: string, 
@@ -58,15 +58,7 @@ export class StorageManager {
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
     try {
-      // Resim boyutunu kontrol et
-      if (file.size > 5 * 1024 * 1024) { // 5MB
-        throw new Error('Resim boyutu 5MB\'dan küçük olmalıdır');
-      }
-
-      // Dosya türünü kontrol et
-      if (!file.type.startsWith('image/')) {
-        throw new Error('Sadece resim dosyaları yüklenebilir');
-      }
+      console.log('Resim yükleme başlıyor:', file.name, file.size, 'bytes');
 
       // Benzersiz dosya adı oluştur
       const timestamp = Date.now();
@@ -74,6 +66,7 @@ export class StorageManager {
       const fileName = `${timestamp}-${Math.random().toString(36).substr(2, 9)}.${extension}`;
       const path = `chats/${chatId}/images/${fileName}`;
 
+      console.log('Resim yükleme path:', path);
       return await this.uploadFile(file, path, onProgress);
     } catch (error) {
       console.error('Resim yükleme hatası:', error);
@@ -81,7 +74,7 @@ export class StorageManager {
     }
   }
 
-  // Dosya yükleme
+  // Dosya yükleme (boyut limiti kaldırıldı)
   public async uploadDocument(
     file: File, 
     chatId: string, 
@@ -89,10 +82,7 @@ export class StorageManager {
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
     try {
-      // Dosya boyutunu kontrol et
-      if (file.size > 10 * 1024 * 1024) { // 10MB
-        throw new Error('Dosya boyutu 10MB\'dan küçük olmalıdır');
-      }
+      console.log('Dosya yükleme başlıyor:', file.name, file.size, 'bytes', file.type);
 
       // Benzersiz dosya adı oluştur
       const timestamp = Date.now();
@@ -100,6 +90,7 @@ export class StorageManager {
       const fileName = `${timestamp}-${Math.random().toString(36).substr(2, 9)}.${extension}`;
       const path = `chats/${chatId}/files/${fileName}`;
 
+      console.log('Dosya yükleme path:', path);
       return await this.uploadFile(file, path, onProgress);
     } catch (error) {
       console.error('Dosya yükleme hatası:', error);
@@ -107,7 +98,7 @@ export class StorageManager {
     }
   }
 
-  // Ses kaydı yükleme
+  // Ses kaydı yükleme (boyut limiti kaldırıldı)
   public async uploadAudio(
     audioBlob: Blob, 
     chatId: string, 
@@ -115,10 +106,7 @@ export class StorageManager {
     duration: number
   ): Promise<UploadResult> {
     try {
-      // Ses dosyası boyutunu kontrol et
-      if (audioBlob.size > 5 * 1024 * 1024) { // 5MB
-        throw new Error('Ses kaydı 5MB\'dan küçük olmalıdır');
-      }
+      console.log('Ses kaydı yükleme başlıyor:', audioBlob.size, 'bytes');
 
       // Benzersiz dosya adı oluştur
       const timestamp = Date.now();
@@ -128,6 +116,7 @@ export class StorageManager {
       // Blob'u File'a çevir
       const file = new File([audioBlob], fileName, { type: 'audio/webm' });
 
+      console.log('Ses kaydı yükleme path:', path);
       return await this.uploadFile(file, path);
     } catch (error) {
       console.error('Ses kaydı yükleme hatası:', error);

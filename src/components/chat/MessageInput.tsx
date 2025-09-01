@@ -88,41 +88,55 @@ export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
       setIsUploading(true);
       
       const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      const isAudio = file.type.startsWith('audio/');
+      
+      console.log('Dosya türü analizi:', { isImage, isVideo, isAudio, type: file.type });
+      
       let uploadResult;
+      let messageType: 'image' | 'file' | 'audio' = 'file';
+      let messageText = `📎 ${file.name}`;
 
       if (isImage) {
         // Resim yükleme
         uploadResult = await storageManager.uploadImage(file, chatId, user.uid);
-        
-        await sendMessage(chatId, {
-          chatId,
-          from: user.uid,
-          type: 'image',
-          fileName: file.name,
-          fileSize: file.size,
-          mediaType: file.type,
-          mediaURL: uploadResult.url,
-          text: '🖼️ Resim' // Undefined yerine varsayılan metin
-        });
-
-        toast.success('Resim gönderildi');
-      } else {
-        // Dosya yükleme
+        messageType = 'image';
+        messageText = '🖼️ Resim';
+      } else if (isVideo) {
+        // Video yükleme (dosya olarak)
         uploadResult = await storageManager.uploadDocument(file, chatId, user.uid);
-        
-        await sendMessage(chatId, {
-          chatId,
-          from: user.uid,
-          type: 'file',
-          fileName: file.name,
-          fileSize: file.size,
-          mediaType: file.type,
-          mediaURL: uploadResult.url,
-          text: `📎 ${file.name}`
-        });
-
-        toast.success('Dosya gönderildi');
+        messageType = 'file';
+        messageText = '🎬 Video';
+      } else if (isAudio) {
+        // Ses dosyası yükleme
+        uploadResult = await storageManager.uploadDocument(file, chatId, user.uid);
+        messageType = 'audio';
+        messageText = '🎵 Ses dosyası';
+      } else {
+        // Diğer dosyalar
+        uploadResult = await storageManager.uploadDocument(file, chatId, user.uid);
+        messageType = 'file';
+        messageText = `📎 ${file.name}`;
       }
+      
+      console.log('Upload tamamlandı:', uploadResult);
+
+      await sendMessage(chatId, {
+        chatId,
+        from: user.uid,
+        type: messageType,
+        fileName: file.name,
+        fileSize: file.size,
+        mediaType: file.type,
+        mediaURL: uploadResult.url,
+        text: messageText
+      });
+
+      const successMessage = isImage ? 'Resim gönderildi' : 
+                           isVideo ? 'Video gönderildi' :
+                           isAudio ? 'Ses dosyası gönderildi' : 'Dosya gönderildi';
+      
+      toast.success(successMessage);
     } catch (error: any) {
       console.error('Dosya yükleme hatası:', error);
       toast.error(error.message || 'Dosya gönderilemedi');
@@ -137,10 +151,11 @@ export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
     noClick: true, // Tıklama ile dosya seçiciyi devre dışı bırak
     noKeyboard: true, // Keyboard ile dosya seçiciyi devre dışı bırak
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
-      'application/*': ['.pdf', '.doc', '.docx', '.txt'],
-      'audio/*': ['.mp3', '.wav', '.ogg'],
-      'video/*': ['.mp4', '.webm']
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff', '.svg'],
+      'video/*': ['.mp4', '.webm', '.avi', '.mov', '.wmv', '.flv', '.mkv'],
+      'audio/*': ['.mp3', '.wav', '.ogg', '.aac', '.flac', '.m4a'],
+      'application/*': ['.pdf', '.doc', '.docx', '.txt', '.xlsx', '.pptx', '.zip', '.rar'],
+      'text/*': ['.txt', '.csv', '.json', '.xml', '.html', '.css', '.js', '.ts']
     }
   });
 
@@ -307,7 +322,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ chatId }) => {
         ref={fileInputRef}
         type="file"
         className="hidden"
-        accept="image/*,application/*,audio/*,video/*"
+        accept="image/*,video/*,audio/*,application/*,text/*"
         onChange={(e) => {
           const files = Array.from(e.target.files || []);
           if (files.length > 0) {

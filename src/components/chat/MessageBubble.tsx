@@ -87,23 +87,63 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         );
 
       case 'file':
-        return (
-          <div className="file-message">
-            <div className="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
-              <Download className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            </div>
-            <div className="flex-1">
-              <p className="font-medium text-sm">
-                {message.fileName || 'Dosya'}
-              </p>
-              {message.fileSize && (
-                <p className="text-xs text-gray-500">
-                  {(message.fileSize / 1024 / 1024).toFixed(1)} MB
+        const isVideo = message.mediaType?.startsWith('video/');
+        const isAudio = message.mediaType?.startsWith('audio/') && message.mediaType !== 'audio/webm'; // Exclude voice messages
+        
+        if (isVideo) {
+          return (
+            <div className="media-preview">
+              <video
+                src={message.mediaURL}
+                controls
+                className="max-w-xs max-h-64 rounded-lg"
+                preload="metadata"
+              >
+                Tarayıcınız video oynatmayı desteklemiyor.
+              </video>
+              {message.text && (
+                <p className="mt-2 whitespace-pre-wrap break-words">
+                  {message.text}
                 </p>
               )}
             </div>
-          </div>
-        );
+          );
+        } else if (isAudio) {
+          return (
+            <div className="audio-message">
+              <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center text-white">
+                <Play className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <audio controls className="w-full">
+                  <source src={message.mediaURL} type={message.mediaType} />
+                  Tarayıcınız ses oynatmayı desteklemiyor.
+                </audio>
+                <p className="text-xs text-gray-500 mt-1">
+                  {message.fileName}
+                </p>
+              </div>
+            </div>
+          );
+        } else {
+          return (
+            <div className="file-message">
+              <div className="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                <Download className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-sm">
+                  {message.fileName || 'Dosya'}
+                </p>
+                {message.fileSize && (
+                  <p className="text-xs text-gray-500">
+                    {(message.fileSize / 1024 / 1024).toFixed(1)} MB
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        }
 
       case 'audio':
         return (
